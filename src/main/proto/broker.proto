@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package com.custombroker.grpc;
+
+// Налаштування для Java-генератора коду
+option java_multiple_files = true;
+option java_package = "com.custombroker.grpc";
+option java_outer_classname = "BrokerProto";
+
+// Сервіс для Продюсерів (Відправників)
+service PublisherService {
+  // Універсальна одиночна публікація повідомлення
+  rpc Publish (PublishRequest) returns (PublishResponse);
+  
+  // Опціонально: стрім-публікація для високонавантажених продюсерів
+  rpc PublishStream (stream PublishRequest) returns (PublishResponseSummary);
+}
+
+// Сервіс для Консюмерів (Отримувачів)
+service ConsumerService {
+  // Двонаправлений стрім (Bidirectional Streaming) - ідеально для менеджменту каналу.
+  // Консюмер відкриває стрім і може надсилати ACKs або підписки, 
+  // а Брокер у відповідь штовхає (Push) повідомлення.
+  rpc OpenChannel (stream ConsumerRequest) returns (stream BrokerResponse);
+}
+
+// --- СПІЛЬНІ МОДЕЛІ ДАНИХ ---
+
+message Message {
+  int64 id = 1;                      // Глобальний ID повідомлення (генерований БД або Snowflake)
+  bytes payload = 2;                 // Сирі бінарні дані повідомлення
+  string routing_key = 3;            // Ключ маршрутизації
+  map<string, string> headers = 4;   // Метадані (аналог AMQP Content Header)
+  int64 timestamp = 5;               // Час створення (Unix timestamp)
+}
+
+// --- МОДЕЛІ ДЛЯ PUBLISHER ---
+
+message PublishRequest {
+  string exchange = 1;
+  string routing_key = 2;
+  bytes payload = 3;
+  map<string, string> headers = 4;
+}
+
+message PublishResponse {
+  bool success = 1;
+  int64 message_id = 2;              // ID, під яким повідомлення збережено в БД
+  string error_message = 3;          // Заповнюється, якщо success == false
+}
+
+message PublishResponseSummary {
+  int64 total_published = 1;
+  bool success = 2;
+}
+
+// --- МОДЕЛІ ДЛЯ CONSUMER (Bidirectional Stream) ---
+
+// Все, що Клієнт може надіслати в Брокер всередині одного TCP-каналу
+message ConsumerRequest {
+  oneof request_type {
+    SubscribeAction subscribe = 1;   // Перший крок: реєстрація у черзі
+    AckAction ack = 2;               // Підтвердження обробки повідомлення
+    NackAction nack = 3;             // Повідомлення про помилку обробки (Requeue)
+    KeepAlive ping = 4;              // Для підтримки зв'язку
+  }
+}
+
+message SubscribeAction {
+  string queue_name = 1;
+  int32 prefetch_count = 2;          // Обмеження на кількість повідомлень "в польоті"
+}
+
+message AckAction {
+  int64 delivery_tag = 1;            // Локальний ID повідомлення в межах стріму
+  int64 message_id = 2;              // Глобальний ID для видалення з БД
+}
+
+message NackAction {
+  int64 delivery_tag = 1;
+  int64 message_id = 2;
+  bool requeue = 3;                  // Чи повертати повідомлення назад у чергу
+}
+
+message KeepAlive {
+  int64 timestamp = 1;
+}
+
+// Все, що Брокер може примусово надіслати Консюмеру
+message BrokerResponse {
+  oneof response_type {
+    MessageDelivery delivery = 1;    // Доставка повідомлення
+    ChannelCommand command = 2;      // Команди керування (наприклад, зупинка сервісу)
+    KeepAlive pong = 3;
+  }
+}
+
+message MessageDelivery {
+  int64 delivery_tag = 1;            // Інкрементальний ID (1, 2, 3...) суто для цього стріму
+  Message message = 2;               // Саме повідомлення
+}
+
+message ChannelCommand {
+  enum CommandType {
+    CLOSE = 0;
+    PAUSE = 1;
+    RESUME = 2;
+  }
+  CommandType type = 1;
+  string reason = 2;
+}
