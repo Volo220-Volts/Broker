@@ -8,10 +8,7 @@ import org.springframework.beans.factory.DisposableBean;
 import java.util.Objects;
 import java.util.concurrent.*;
 
-/**
- * Lightweight scheduler for repeating background tasks. Tasks are registered
- * with a {@link TaskSchedule} and run on a shared ScheduledExecutorService.
- */
+
 @Component
 public class BackgroundTaskScheduler implements DisposableBean {
     private static final Logger log = LoggerFactory.getLogger(BackgroundTaskScheduler.class);
@@ -63,9 +60,7 @@ public class BackgroundTaskScheduler implements DisposableBean {
         executor.shutdownNow();
     }
 
-    /**
-     * Backwards-compatible shutdown helper used by tests.
-     */
+    
     public void shutdown() {
         destroy();
     }

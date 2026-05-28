@@ -2,56 +2,55 @@ package com.volo.broker.transport.grpc;
 
 import com.custombroker.grpc.BrokerResponse;
 import com.custombroker.grpc.MessageDelivery;
-import com.custombroker.grpc.Message;
-import com.volo.broker.engine.ConsumerChannel;
-import com.volo.broker.engine.QueuedMessage;
-import com.volo.broker.transport.model.SafeGrpcObserver;
+import com.volo.broker.domain.subscription.ConsumerChannel;
+import com.volo.broker.transport.grpc.adapter.SafeGrpcObserver;
+import com.volo.broker.transport.grpc.connection.ConsumerConnection;
+import com.volo.broker.transport.grpc.mapper.GrpcMessageConverters;
 
 import io.grpc.stub.StreamObserver;
-import java.util.UUID;
 
 public class GrpcConsumerChannelAdapter implements ConsumerChannel {
+    private final ConsumerConnection connection;
 
-    private final String consumerTag = UUID.randomUUID().toString();
-    private final SafeGrpcObserver<BrokerResponse> observer;
+    public GrpcConsumerChannelAdapter(ConsumerConnection connection) {
+        this.connection = connection;
+    }
 
     public GrpcConsumerChannelAdapter(StreamObserver<BrokerResponse> responseObserver) {
-        this.observer = new SafeGrpcObserver<>(responseObserver);
+        this(new ConsumerConnection(new SafeGrpcObserver<>(responseObserver), null));
     }
 
     @Override
     public String consumerTag() {
-        return consumerTag;
+        return connection.consumerTag();
     }
 
     @Override
     public boolean canAcceptMore() {
-        return !observer.isClosed();
+        return !connection.isClosed();
     }
 
     @Override
-    public void send(com.volo.broker.engine.MessageDelivery delivery) {
-        if (observer.isClosed()) return;
-
-        QueuedMessage qm = delivery.message();
-
-        Message protoMsg = GrpcMessageConverters.toProtoMessage(qm);
-
+    public void send(com.volo.broker.domain.message.MessageDelivery delivery) {
         MessageDelivery protoDelivery = MessageDelivery.newBuilder()
                 .setDeliveryTag(delivery.deliveryTag())
-                .setMessage(protoMsg)
+                .setMessage(GrpcMessageConverters.toProtoMessage(delivery.message()))
+                .setRedelivered(delivery.message().isRedelivered())
+                .setDeliveryAttempt(delivery.message().getDeliveryAttempt())
                 .build();
 
-        BrokerResponse response = BrokerResponse.newBuilder()
-                .setDelivery(protoDelivery)
-                .build();
-
-        observer.onNext(response);
+        try {
+            connection.send(BrokerResponse.newBuilder()
+                    .setDelivery(protoDelivery)
+                    .build());
+        } catch (Exception e) {
+            connection.close();
+        }
     }
 
     @Override
     public void close(String reason) {
-        observer.onCompleted();
+        connection.close();
     }
 
     @Override

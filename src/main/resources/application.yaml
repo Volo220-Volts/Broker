@@ -1,14 +1,18 @@
+
+
+
 spring:
   application:
     name: broker
   datasource:
-    url: jdbc:sqlite:broker.db
-    driver-class-name: org.sqlite.JDBC
-
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
   jpa:
-    database-platform: org.hibernate.community.dialect.SQLiteDialect
+   
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     show-sql: true
 
 grpc:
@@ -16,6 +20,14 @@ grpc:
     port: 6565
 
 broker:
+  publisher:
+    keep-alive:
+      timeout-ms: 30000
+      check-period-ms: 5000
+  consumer:
+    keep-alive:
+      timeout-ms: 30000
+      check-period-ms: 5000
   dispatch:
     threads: 2
 

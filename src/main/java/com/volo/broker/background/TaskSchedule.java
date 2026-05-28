@@ -3,9 +3,7 @@ package com.volo.broker.background;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Simple schedule descriptor for periodic background tasks.
- */
+
 public final class TaskSchedule {
     private final long initialDelay;
     private final long period;

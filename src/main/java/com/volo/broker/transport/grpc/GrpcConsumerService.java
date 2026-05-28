@@ -3,109 +3,108 @@ package com.volo.broker.transport.grpc;
 import com.custombroker.grpc.BrokerResponse;
 import com.custombroker.grpc.ConsumerRequest;
 import com.custombroker.grpc.ConsumerServiceGrpc;
-import com.custombroker.grpc.SubscribeAction;
-import com.custombroker.grpc.AckAction;
-import com.custombroker.grpc.NackAction;
+import com.custombroker.grpc.KeepAlive;
+import com.volo.broker.core.command.CommandBus;
+import com.volo.broker.core.command.model.AckCommand;
+import com.volo.broker.core.command.model.DisconnectCommand;
+import com.volo.broker.core.command.model.NackCommand;
+import com.volo.broker.core.command.model.SubscribeCommand;
+import com.volo.broker.transport.grpc.adapter.SafeGrpcObserver;
+import com.volo.broker.transport.grpc.connection.ConsumerConnection;
+import com.volo.broker.transport.grpc.connection.ConsumerConnectionRegistry;
+import com.volo.broker.transport.grpc.mapper.GrpcErrorMapper;
+
 import io.grpc.stub.StreamObserver;
-
-import java.util.logging.Logger;
-
 import org.springframework.stereotype.Component;
-import com.volo.broker.transport.TransportCommandRouter;
-import com.volo.broker.transport.model.SubscribeCommand;
-import com.volo.broker.transport.model.AckCommand;
-import com.volo.broker.transport.model.NackCommand;
-import com.volo.broker.engine.QueueManager;
-import com.volo.broker.engine.SubscriptionManager;
+
+import java.util.Objects;
 
 @Component
 public class GrpcConsumerService extends ConsumerServiceGrpc.ConsumerServiceImplBase {
-    private final TransportCommandRouter router;
-    private final SubscriptionManager subscriptionManager;
-    private final Logger logger = Logger.getLogger(GrpcConsumerService.class.getName());
-    private final QueueManager queueManager;
+    private final CommandBus commandBus;
+    private final ConsumerConnectionRegistry registry;
 
-    public GrpcConsumerService(TransportCommandRouter router, SubscriptionManager subscriptionManager, QueueManager queueManager) {
-        this.router = router;
-        this.subscriptionManager = subscriptionManager;
-        this.queueManager = queueManager;
+    public GrpcConsumerService(CommandBus commandBus, ConsumerConnectionRegistry registry) {
+        this.commandBus = Objects.requireNonNull(commandBus, "commandBus must not be null");
+        this.registry = Objects.requireNonNull(registry, "registry must not be null");
     }
 
     @Override
     public StreamObserver<ConsumerRequest> openChannel(StreamObserver<BrokerResponse> responseObserver) {
-        GrpcConsumerChannelAdapter adapter = new GrpcConsumerChannelAdapter(responseObserver);
+        ConsumerConnection connection = new ConsumerConnection(new SafeGrpcObserver<>(responseObserver), commandBus);
+        GrpcConsumerChannelAdapter adapter = new GrpcConsumerChannelAdapter(connection);
+        registry.register(connection);
 
-        return new StreamObserver<ConsumerRequest>() {
+        return new StreamObserver<>() {
             @Override
             public void onNext(ConsumerRequest request) {
+                if (connection.isClosed()) {
+                    return;
+                }
+
+                connection.markSeen();
+
                 try {
-                    if (request.hasSubscribe()) {
-                        SubscribeAction sa = request.getSubscribe();
-
-                        SubscribeCommand cmd = new SubscribeCommand(
-                                sa.getQueueName(),
-                                sa.getPrefetchCount(),
-                                adapter.consumerTag(),
-                                adapter
-                        );
-
-                        router.route(cmd);
-                        logger.info("Consumer subscribed: " + adapter.consumerTag());
-
-                    } else if (request.hasAck()) {
-                        AckAction a = request.getAck();
-
-                        router.route(new AckCommand(
-                                adapter.consumerTag(),
-                                a.getDeliveryTag(),
-                                a.getMessageId()
-                        ));
-
-                    } else if (request.hasNack()) {
-                        NackAction n = request.getNack();
-
-                        router.route(new NackCommand(
-                                adapter.consumerTag(),
-                                n.getDeliveryTag(),
-                                n.getMessageId(),
-                                n.getRequeue()
-                        ));
-                    }
-
-                } catch (Exception ex) {
-                    cleanup();
-                    adapter.close("request-processing-error: " + ex.getMessage());
+                    handleRequest(connection, adapter, request);
+                } catch (Throwable throwable) {
+                    connection.send(BrokerResponse.newBuilder()
+                            .setError(GrpcErrorMapper.internalError(throwable))
+                            .build());
                 }
             }
 
             @Override
-            public void onError(Throwable t) {
-                cleanup();
+            public void onError(Throwable throwable) {
+                closeConnection(connection);
             }
 
             @Override
             public void onCompleted() {
-                cleanup();
-                adapter.close("client-completed");
-            }
-
-            private void cleanup() {
-                try {
-                    var s = subscriptionManager.unregister(adapter.consumerTag());
-                    if(s.isPresent()){
-                        logger.info("Consumer unsubscribed: " + adapter.consumerTag());
-                        if(s.isPresent()){
-                            var drained = s.get().getInFlightTracker().drainAll().stream().toList();
-                            for(var i = drained.size() - 1; i >= 0; i--){
-                                var d = drained.get(i);
-                                queueManager.requeue(s.get().queueName(), d);
-                            }
-                            
-                        }
-                    }
-                } catch (Throwable ignored) {
-                }
+                closeConnection(connection);
             }
         };
+    }
+
+    private void handleRequest(
+            ConsumerConnection connection,
+            GrpcConsumerChannelAdapter adapter,
+            ConsumerRequest request
+    ) {
+        switch (request.getRequestCase()) {
+            case SUBSCRIBE -> commandBus.execute(new SubscribeCommand(
+                    request.getSubscribe().getQueueName(),
+                    request.getSubscribe().getPrefetchCount(),
+                    adapter.consumerTag(),
+                    adapter
+            ));
+            case ACK -> commandBus.execute(new AckCommand(
+                    adapter.consumerTag(),
+                    request.getAck().getDeliveryTag(),
+                    request.getAck().getMessageId()
+            ));
+            case NACK -> commandBus.execute(new NackCommand(
+                    adapter.consumerTag(),
+                    request.getNack().getDeliveryTag(),
+                    request.getNack().getMessageId(),
+                    request.getNack().getRequeue()
+            ));
+            case PING -> connection.send(BrokerResponse.newBuilder()
+                    .setPong(KeepAlive.newBuilder()
+                            .setTimestamp(System.currentTimeMillis())
+                            .build())
+                    .build());
+            case REQUEST_NOT_SET -> connection.send(BrokerResponse.newBuilder()
+                    .setError(GrpcErrorMapper.fromCode(
+                            com.volo.broker.core.error.BrokerErrorCode.INVALID_REQUEST,
+                            "Consumer request must contain one request type"
+                    ))
+                    .build());
+        }
+    }
+
+    private void closeConnection(ConsumerConnection connection) {
+        registry.unregister(connection.connectionId());
+        commandBus.execute(new DisconnectCommand(connection.consumerTag()));
+        connection.close();
     }
 }
