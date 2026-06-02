@@ -1,8 +1,8 @@
 package com.volo.broker.persistence;
 
-import com.volo.broker.domain.message.QueuedMessage;
-
 import java.util.List;
+
+import com.volo.broker.broker.message.QueuedMessage;
 
 public interface MessageStore {
 

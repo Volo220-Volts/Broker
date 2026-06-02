@@ -103,3 +103,6 @@ nb-configuration.xml
 
 
 *.log
+
+
+*.db

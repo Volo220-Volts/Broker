@@ -5,10 +5,10 @@ import com.custombroker.grpc.PublishAction;
 import com.custombroker.grpc.PublisherRequest;
 import com.custombroker.grpc.PublisherResponse;
 import com.google.protobuf.ByteString;
-import com.volo.broker.core.command.model.PublishCommand;
-import com.volo.broker.core.command.model.PublishResult;
-import com.volo.broker.domain.message.DeliveryGuarantee;
-import com.volo.broker.domain.message.QueuedMessage;
+import com.volo.broker.broker.command.model.PublishCommand;
+import com.volo.broker.broker.command.model.PublishResult;
+import com.volo.broker.broker.message.DeliveryGuarantee;
+import com.volo.broker.broker.message.QueuedMessage;
 import com.volo.broker.transport.grpc.mapper.GrpcMessageConverters;
 
 import org.junit.jupiter.api.Test;
@@ -59,7 +59,7 @@ class GrpcMessageConvertersTest {
 
     @Test
     void testToPublishResponse_Nack() {
-        PublishResult result = PublishResult.nack(com.volo.broker.core.error.BrokerErrorCode.INVALID_REQUEST, "Invalid payload");
+        PublishResult result = PublishResult.nack(com.volo.broker.broker.error.BrokerErrorCode.INVALID_REQUEST, "Invalid payload");
 
         PublisherResponse response = GrpcMessageConverters.toPublisherResponse("client-2", result);
 

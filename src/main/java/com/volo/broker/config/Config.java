@@ -3,8 +3,8 @@ package com.volo.broker.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.volo.broker.domain.queue.InMemoryDequeManager;
-import com.volo.broker.domain.queue.QueueManager;
+import com.volo.broker.broker.queue.InMemoryDequeManager;
+import com.volo.broker.broker.queue.QueueManager;
 
 @Configuration
 public class Config {

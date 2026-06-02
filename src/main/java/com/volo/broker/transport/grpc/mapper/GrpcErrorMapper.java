@@ -2,8 +2,8 @@ package com.volo.broker.transport.grpc.mapper;
 
 import com.custombroker.grpc.ErrorCode;
 import com.custombroker.grpc.ErrorInfo;
-import com.volo.broker.core.error.BrokerErrorCode;
-import com.volo.broker.core.error.BrokerException;
+import com.volo.broker.broker.error.BrokerErrorCode;
+import com.volo.broker.broker.error.BrokerException;
 
 import java.util.Map;
 

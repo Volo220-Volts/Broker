@@ -6,19 +6,16 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-
-
-
-import com.volo.broker.domain.inflight.DefaultInFlightTracker;
-import com.volo.broker.domain.inflight.InFlightTracker;
-import com.volo.broker.domain.message.DeliveryGuarantee;
-import com.volo.broker.domain.message.QueuedMessage;
-import com.volo.broker.domain.queue.InMemoryQueueManager;
-import com.volo.broker.domain.queue.QueueManager;
-import com.volo.broker.domain.subscription.ConsumerChannel;
-import com.volo.broker.domain.subscription.DefaultSubscriptionManager;
-import com.volo.broker.domain.subscription.Subscription;
-import com.volo.broker.domain.subscription.SubscriptionManager;
+import com.volo.broker.broker.inflight.DefaultInFlightTracker;
+import com.volo.broker.broker.inflight.InFlightTracker;
+import com.volo.broker.broker.message.DeliveryGuarantee;
+import com.volo.broker.broker.message.QueuedMessage;
+import com.volo.broker.broker.queue.InMemoryQueueManager;
+import com.volo.broker.broker.queue.QueueManager;
+import com.volo.broker.broker.subscription.ConsumerChannel;
+import com.volo.broker.broker.subscription.DefaultSubscriptionManager;
+import com.volo.broker.broker.subscription.Subscription;
+import com.volo.broker.broker.subscription.SubscriptionManager;
 
 class QueueEngineTests {
 

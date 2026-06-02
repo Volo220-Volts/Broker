@@ -14,18 +14,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.volo.broker.domain.subscription.ConsumerChannel;
-import com.volo.broker.domain.subscription.DefaultSubscriptionManager;
-import com.volo.broker.core.command.handler.DisconnectCommandHandler;
-import com.volo.broker.core.command.model.DisconnectCommand;
-import com.volo.broker.core.dispatch.DispatchManager;
-import com.volo.broker.core.dispatch.QueueDispatchScheduler;
-import com.volo.broker.domain.message.DeliveryGuarantee;
-import com.volo.broker.domain.queue.InMemoryDequeManager;
-import com.volo.broker.domain.message.MessageDelivery;
-import com.volo.broker.domain.queue.QueueManager;
-import com.volo.broker.domain.message.QueuedMessage;
-import com.volo.broker.domain.subscription.SubscriptionManager;
+import com.volo.broker.broker.command.handler.DisconnectCommandHandler;
+import com.volo.broker.broker.command.model.DisconnectCommand;
+import com.volo.broker.broker.dispatch.DispatchManager;
+import com.volo.broker.broker.dispatch.QueueDispatchScheduler;
+import com.volo.broker.broker.message.DeliveryGuarantee;
+import com.volo.broker.broker.message.MessageDelivery;
+import com.volo.broker.broker.message.QueuedMessage;
+import com.volo.broker.broker.queue.InMemoryDequeManager;
+import com.volo.broker.broker.queue.QueueManager;
+import com.volo.broker.broker.subscription.ConsumerChannel;
+import com.volo.broker.broker.subscription.DefaultSubscriptionManager;
+import com.volo.broker.broker.subscription.SubscriptionManager;
 import com.volo.broker.persistence.MessageStore;
 
 @ExtendWith(MockitoExtension.class)

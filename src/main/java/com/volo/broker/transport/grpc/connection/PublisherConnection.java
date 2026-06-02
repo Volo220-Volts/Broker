@@ -1,7 +1,7 @@
 package com.volo.broker.transport.grpc.connection;
 
 import com.custombroker.grpc.PublisherResponse;
-import com.volo.broker.transport.grpc.adapter.SafeGrpcObserver;
+import com.volo.broker.transport.grpc.SafeGrpcObserver;
 
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;

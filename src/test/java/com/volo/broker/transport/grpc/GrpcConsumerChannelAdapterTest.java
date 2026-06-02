@@ -1,9 +1,11 @@
 package com.volo.broker.transport.grpc;
 
 import com.custombroker.grpc.BrokerResponse;
-import com.volo.broker.domain.message.MessageDelivery;
-import com.volo.broker.domain.message.QueuedMessage;
-import com.volo.broker.domain.message.DeliveryGuarantee;
+import com.volo.broker.broker.message.DeliveryGuarantee;
+import com.volo.broker.broker.message.MessageDelivery;
+import com.volo.broker.broker.message.QueuedMessage;
+import com.volo.broker.transport.grpc.adapter.GrpcConsumerChannelAdapter;
+
 import io.grpc.stub.StreamObserver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

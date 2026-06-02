@@ -1,9 +1,9 @@
 package com.volo.broker.transport.grpc.connection;
 
 import com.custombroker.grpc.BrokerResponse;
-import com.volo.broker.core.command.CommandBus;
-import com.volo.broker.core.command.model.DisconnectCommand;
-import com.volo.broker.transport.grpc.adapter.SafeGrpcObserver;
+import com.volo.broker.broker.command.CommandBus;
+import com.volo.broker.broker.command.model.DisconnectCommand;
+import com.volo.broker.transport.grpc.SafeGrpcObserver;
 
 import java.util.Objects;
 import java.util.UUID;

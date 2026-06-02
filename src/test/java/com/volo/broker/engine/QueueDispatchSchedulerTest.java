@@ -14,9 +14,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.volo.broker.core.dispatch.DispatchManager;
-import com.volo.broker.core.dispatch.QueueDispatchScheduler;
-import com.volo.broker.domain.queue.QueueManager;
+import com.volo.broker.broker.dispatch.DispatchManager;
+import com.volo.broker.broker.dispatch.QueueDispatchScheduler;
+import com.volo.broker.broker.queue.QueueManager;
 
 @ExtendWith(MockitoExtension.class)
 class QueueDispatchSchedulerTest {

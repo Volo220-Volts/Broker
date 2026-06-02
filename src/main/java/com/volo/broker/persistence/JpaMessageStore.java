@@ -7,8 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.volo.broker.domain.message.DeliveryGuarantee;
-import com.volo.broker.domain.message.QueuedMessage;
+import com.volo.broker.broker.message.DeliveryGuarantee;
+import com.volo.broker.broker.message.QueuedMessage;
 import com.volo.broker.persistence.entity.StoredMessageEntity;
 
 

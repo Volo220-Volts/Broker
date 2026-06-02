@@ -15,6 +15,11 @@ service ConsumerService {
   rpc OpenChannel(stream ConsumerRequest) returns (stream BrokerResponse);
 }
 
+service QueueService {
+  rpc DeclareQueue(DeclareQueueRequest) returns (QueueOperationResponse);
+  rpc DeleteQueue(DeleteQueueRequest) returns (QueueOperationResponse);
+}
+
 enum DeliveryGuarantee {
   DELIVERY_GUARANTEE_UNSPECIFIED = 0;
   AT_MOST_ONCE = 1;
@@ -124,4 +129,17 @@ message ErrorInfo {
   ErrorCode code = 1;
   string message = 2;
   map<string, string> details = 3;
+}
+
+message DeclareQueueRequest {
+  string queue_path = 1;
+}
+
+message DeleteQueueRequest {
+  string queue_path = 1;
+}
+
+message QueueOperationResponse {
+  bool success = 1;
+  ErrorInfo error = 2;
 }
