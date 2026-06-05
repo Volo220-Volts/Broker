@@ -63,7 +63,7 @@ public final class GrpcQueueSettingsConverter {
 
     private static QueueLifecyclePolicy toLifecyclePolicy(com.custombroker.grpc.QueueLifecyclePolicy proto) {
         if (proto == null) return QueueLifecyclePolicy.defaults();
-        return new QueueLifecyclePolicy(proto.getAutoDelete(), proto.getIdleTimeoutEnabled(), proto.getIdleTimeoutMs());
+        return new QueueLifecyclePolicy(proto.getAutoDelete(), proto.getIdleTimeoutEnabled(), proto.getIdleTimeoutMs(), proto.getDurable());
     }
 
     private static QueueCapacityPolicy toCapacityPolicy(com.custombroker.grpc.QueueCapacityPolicy proto) {

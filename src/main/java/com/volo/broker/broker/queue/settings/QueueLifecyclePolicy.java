@@ -3,7 +3,8 @@ package com.volo.broker.broker.queue.settings;
 public record QueueLifecyclePolicy(
         boolean autoDelete,
         boolean idleTimeoutEnabled,
-        long idleTimeoutMs
+        long idleTimeoutMs,
+        boolean durable
 ) {
     public QueueLifecyclePolicy {
         if (idleTimeoutEnabled && idleTimeoutMs <= 0) {
@@ -16,6 +17,6 @@ public record QueueLifecyclePolicy(
     }
 
     public static QueueLifecyclePolicy defaults() {
-        return new QueueLifecyclePolicy(false, false, 0);
+        return new QueueLifecyclePolicy(false, false, 0, false);
     }
 }

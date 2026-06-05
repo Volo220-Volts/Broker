@@ -32,11 +32,11 @@ public class RouteTree {
         return Set.copyOf(result);
     }
 
-    private void detachQueue(RouteNode node, String queueName) {
-        node.removeQueue(queueName);
+    private void detachQueue(RouteNode node, String queuePath) {
+        node.removeQueue(queuePath);
 
         for (RouteNode child : node.children()) {
-            detachQueue(child, queueName);
+            detachQueue(child, queuePath);
         }
     }
 

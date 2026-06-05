@@ -4,11 +4,8 @@ import com.volo.broker.broker.command.CommandHandler;
 import com.volo.broker.broker.command.model.DeleteQueueCommand;
 import com.volo.broker.broker.command.model.QueueOperationResult;
 import com.volo.broker.broker.error.BrokerErrorCode;
-import com.volo.broker.broker.queue.QueueManager;
 import com.volo.broker.broker.queue.exception.QueueNotFoundException;
-import com.volo.broker.broker.router.QueuePath;
-import com.volo.broker.broker.validation.QueuePathValidator;
-
+import com.volo.broker.broker.services.QueueDeclarationService;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
@@ -16,12 +13,10 @@ import java.util.Objects;
 @Component
 public class DeleteQueueCommandHandler implements CommandHandler<DeleteQueueCommand, QueueOperationResult> {
 
-    private final QueueManager queueManager;
-    private final QueuePathValidator queuePathValidator;
+    private final QueueDeclarationService declarationService;
 
-    public DeleteQueueCommandHandler(QueueManager queueManager, QueuePathValidator queuePathValidator) {
-        this.queueManager = Objects.requireNonNull(queueManager, "queueManager must not be null");
-        this.queuePathValidator = Objects.requireNonNull(queuePathValidator, "queuePathValidator must not be null");
+    public DeleteQueueCommandHandler(QueueDeclarationService declarationService) {
+        this.declarationService = Objects.requireNonNull(declarationService);
     }
 
     @Override
@@ -32,10 +27,7 @@ public class DeleteQueueCommandHandler implements CommandHandler<DeleteQueueComm
     @Override
     public QueueOperationResult handle(DeleteQueueCommand command) {
         try {
-            QueuePath path = queuePathValidator.validateAndParse(command.queuePath());
-
-            queueManager.delete(path);
-
+            declarationService.delete(command.queuePath());
             return QueueOperationResult.ofSuccess();
 
         } catch (QueueNotFoundException exception) {

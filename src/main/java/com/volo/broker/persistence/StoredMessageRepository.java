@@ -16,6 +16,10 @@ public interface StoredMessageRepository extends JpaRepository<StoredMessageEnti
     @Query("select coalesce(max(m.id), 0) from StoredMessageEntity m")
     long findMaxMessageId();
 
+    @Modifying
+    @Query("delete from StoredMessageEntity m where m.queuePath = :queuePath")
+    int deleteByQueuePath(String queuePath);
+
     @Transactional
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from StoredMessageEntity m where m.id = :messageId")

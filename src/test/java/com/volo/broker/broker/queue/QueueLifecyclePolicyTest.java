@@ -21,7 +21,8 @@ class QueueLifecyclePolicyTest {
         assertThatThrownBy(() -> new QueueLifecyclePolicy(
                 false,
                 true,
-                0
+                0,
+                false
         )).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("idleTimeoutMs");
     }
@@ -31,7 +32,8 @@ class QueueLifecyclePolicyTest {
         QueueLifecyclePolicy policy = new QueueLifecyclePolicy(
                 false,
                 false,
-                0
+                0,
+                false
         );
 
         assertThat(policy.idleTimeoutEnabled()).isFalse();
@@ -43,7 +45,8 @@ class QueueLifecyclePolicyTest {
         QueueLifecyclePolicy policy = new QueueLifecyclePolicy(
                 true,
                 false,
-                0
+                0,
+                false
         );
 
         assertThat(policy.autoDelete()).isTrue();

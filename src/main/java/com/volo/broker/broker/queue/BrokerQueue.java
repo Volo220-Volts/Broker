@@ -61,10 +61,6 @@ public final class BrokerQueue {
         return Optional.of(message);
     }
 
-    public synchronized Optional<QueuedMessage> pollOldest() {
-        return poll();
-    }
-
     public synchronized void requeue(QueuedMessage message) {
         Objects.requireNonNull(message, "message must not be null");
 
@@ -87,11 +83,16 @@ public final class BrokerQueue {
         return messages.isEmpty();
     }
 
+    public synchronized void touch() {
+        lastActivityAt = System.currentTimeMillis();
+    }
+
+    //#region getters
     public QueuePath path() {
         return path;
     }
 
-    public String name() {
+    public String queuePath() {
         return path.value();
     }
 
@@ -107,9 +108,7 @@ public final class BrokerQueue {
         return lastActivityAt;
     }
 
-    public synchronized void touch() {
-        lastActivityAt = System.currentTimeMillis();
-    }
+    //#endregion
 
     private void ensureCapacityBeforeEnqueue(QueuedMessage message) {
         if (!settings.capacityPolicy().limited()) {
@@ -137,10 +136,10 @@ public final class BrokerQueue {
         }
 
         if (overflowPolicy == OverflowPolicy.DROP_NEWEST) {
-            throw new QueueOverflowException("Incoming message was dropped because queue is full: " + name());
+            throw new QueueOverflowException("Incoming message was dropped because queue is full: " + queuePath());
         }
 
-        throw new QueueOverflowException("Queue capacity exceeded: " + name());
+        throw new QueueOverflowException("Queue capacity exceeded: " + queuePath());
     }
 
     private List<QueuedMessage> applyOverflowPolicy(QueuedMessage incomingMessage) {
@@ -154,11 +153,11 @@ public final class BrokerQueue {
 
         return switch (settings.capacityPolicy().overflowPolicy()) {
             case REJECT_PUBLISH -> throw new QueueOverflowException(
-                    "Queue capacity exceeded: " + name()
+                    "Queue capacity exceeded: " + queuePath()
             );
 
             case DROP_NEWEST -> throw new QueueOverflowException(
-                    "Incoming message was dropped because queue is full: " + name()
+                    "Incoming message was dropped because queue is full: " + queuePath()
             );
 
             case DROP_OLDEST -> dropOldestUntilFits(incomingMessage);
@@ -195,7 +194,7 @@ public final class BrokerQueue {
 
         if (capacityExceededAfterAdding(incomingMessage)) {
             throw new QueueOverflowException(
-                    "Incoming message is too large for queue capacity: " + name()
+                    "Incoming message is too large for queue capacity: " + queuePath()
             );
         }
 

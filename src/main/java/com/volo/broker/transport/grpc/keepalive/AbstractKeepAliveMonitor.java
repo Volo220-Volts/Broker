@@ -38,6 +38,7 @@ public abstract class AbstractKeepAliveMonitor<T extends TrackableConnection> im
                 Math.max(1000, checkPeriodMillis),
                 TimeUnit.MILLISECONDS
         );
+        logger.info("Started keep alive monitor thread: {}", threadName);
     }
 
     private void closeStaleConnections() {

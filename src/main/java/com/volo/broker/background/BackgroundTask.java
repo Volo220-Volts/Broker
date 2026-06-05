@@ -1,10 +1,6 @@
 package com.volo.broker.background;
 
 
-public interface BackgroundTask {
-    
-    String name();
-
-    
-    void execute();
+public interface BackgroundTask extends Runnable{
+    TaskSchedule schedule();    
 }

@@ -1,52 +1,74 @@
 package com.volo.broker.broker.command.handler;
 
-import com.volo.broker.TestQueueSettings;
 import com.volo.broker.broker.command.model.DeleteQueueCommand;
 import com.volo.broker.broker.error.BrokerErrorCode;
-import com.volo.broker.broker.queue.InMemoryQueueManager;
-import com.volo.broker.broker.queue.QueueManager;
-import com.volo.broker.broker.router.QueuePath;
-import com.volo.broker.broker.validation.QueuePathValidator;
+import com.volo.broker.broker.queue.exception.QueueNotFoundException;
+import com.volo.broker.broker.services.QueueDeclarationService;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
 
 class DeleteQueueCommandHandlerTest {
 
-    private final QueueManager queueManager = new InMemoryQueueManager();
-    private final QueuePathValidator queuePathValidator = new QueuePathValidator();
+    private final QueueDeclarationService queueDeclarationService =
+            mock(QueueDeclarationService.class);
 
-    private final DeleteQueueCommandHandler handler = new DeleteQueueCommandHandler(
-            queueManager,
-            queuePathValidator
-    );
+    private final DeleteQueueCommandHandler handler =
+            new DeleteQueueCommandHandler(queueDeclarationService);
 
     @Test
-    void handle_shouldDeleteExistingQueue() {
-        queueManager.declare(
-                QueuePath.of("orders.created"),
-                TestQueueSettings.reliable()
-        );
+    void handle_shouldDeleteQueue() {
+        DeleteQueueCommand command = new DeleteQueueCommand("orders.created");
 
-        var result = handler.handle(new DeleteQueueCommand("orders.created"));
+        var result = handler.handle(command);
 
         assertThat(result.success()).isTrue();
-        assertThat(queueManager.find("orders.created")).isEmpty();
+
+        verify(queueDeclarationService).delete("orders.created");
     }
 
     @Test
-    void handle_shouldReturnQueueNotFoundWhenQueueDoesNotExist() {
-        var result = handler.handle(new DeleteQueueCommand("orders.created"));
+    void handle_shouldReturnQueueNotFoundWhenServiceThrowsQueueNotFound() {
+        DeleteQueueCommand command = new DeleteQueueCommand("orders.created");
+
+        doThrow(new QueueNotFoundException("Queue does not exist: orders.created"))
+                .when(queueDeclarationService)
+                .delete(command.queuePath());
+
+        var result = handler.handle(command);
 
         assertThat(result.success()).isFalse();
         assertThat(result.errorCode()).isEqualTo(BrokerErrorCode.QUEUE_NOT_FOUND);
+        assertThat(result.errorMessage()).contains("Queue does not exist");
     }
 
     @Test
-    void handle_shouldRejectInvalidQueuePath() {
-        var result = handler.handle(new DeleteQueueCommand("orders.#"));
+    void handle_shouldReturnInvalidRequestWhenServiceThrowsIllegalArgumentException() {
+        DeleteQueueCommand command = new DeleteQueueCommand("orders.*");
+
+        doThrow(new IllegalArgumentException("queue path must not contain wildcards"))
+                .when(queueDeclarationService)
+                .delete(command.queuePath());
+
+        var result = handler.handle(command);
 
         assertThat(result.success()).isFalse();
         assertThat(result.errorCode()).isEqualTo(BrokerErrorCode.INVALID_REQUEST);
+        assertThat(result.errorMessage()).contains("wildcards");
+    }
+
+    @Test
+    void handle_shouldReturnInternalErrorWhenUnexpectedExceptionOccurs() {
+        DeleteQueueCommand command = new DeleteQueueCommand("orders.created");
+
+        doThrow(new RuntimeException("db error"))
+                .when(queueDeclarationService)
+                .delete(command.queuePath());
+
+        var result = handler.handle(command);
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.errorCode()).isEqualTo(BrokerErrorCode.INTERNAL_ERROR);
     }
 }

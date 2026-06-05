@@ -40,7 +40,7 @@ class JpaMessageStoreTest {
                 .first()
                 .satisfies(entity -> {
                     assertThat(entity.getId()).isEqualTo(100L);
-                    assertThat(entity.getQueueName()).isEqualTo("orders.created");
+                    assertThat(entity.getQueuePath()).isEqualTo("orders.created");
                     assertThat(entity.getRoutingKey()).isEqualTo("orders.created");
                 });
     }

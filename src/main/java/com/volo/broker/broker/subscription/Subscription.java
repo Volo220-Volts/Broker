@@ -33,7 +33,11 @@ public class Subscription {
 
     public long nextDeliveryTag() { return inFlightTracker.nextTag(); }
 
-    public void track(long tag, QueuedMessage message) { inFlightTracker.track(tag, message); }
+    public void track(long tag, QueuedMessage message) { 
+        inFlightTracker.track(tag, message); 
+    }
 
-    public QueuedMessage remove(long tag) { return inFlightTracker.remove(tag); }
+    public QueuedMessage remove(long tag) { 
+        return inFlightTracker.remove(tag); 
+    }
 }

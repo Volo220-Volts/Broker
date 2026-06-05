@@ -38,8 +38,6 @@ public class DisconnectCommandHandler implements CommandHandler<DisconnectComman
 
                     dispatchScheduler.signal(sub.queueName());
 
-
-
                     for (int i = drained.size() - 1; i >= 0; i--) {
                         QueuedMessage message = drained.get(i);
 

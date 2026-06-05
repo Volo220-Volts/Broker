@@ -98,7 +98,7 @@ public final class TestQueueSettings {
             ConsumerAckMode.NONE,
             RedeliveryPolicy.disabled(),
             MessageRetentionPolicy.disabled(),
-            new QueueLifecyclePolicy(false, true, idleTimeoutMs),
+            new QueueLifecyclePolicy(false, true, idleTimeoutMs, false),
             QueueCapacityPolicy.unlimited(),
             DispatchPolicy.defaults()
         );
@@ -111,7 +111,7 @@ public final class TestQueueSettings {
             ConsumerAckMode.NONE,
             RedeliveryPolicy.disabled(),
             MessageRetentionPolicy.disabled(),
-            new QueueLifecyclePolicy(true, false, 0),
+            new QueueLifecyclePolicy(true, false, 0, false),
             QueueCapacityPolicy.unlimited(),
             DispatchPolicy.defaults()
         );

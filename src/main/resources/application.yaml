@@ -1,23 +1,16 @@
-
-
-
 spring:
   application:
     name: broker
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:postgresql://localhost:5432/broker
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: 
   jpa:
-   
     hibernate:
-      ddl-auto: create
+      ddl-auto: create-drop
     show-sql: true
 
-grpc:
-  server:
-    port: 6565
 
 broker:
   publisher:

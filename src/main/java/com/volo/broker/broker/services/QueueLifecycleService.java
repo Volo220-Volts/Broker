@@ -35,7 +35,7 @@ public class QueueLifecycleService {
             return false;
         }
 
-        if (subscriptionManager.hasSubscribers(queue.name())) {
+        if (subscriptionManager.hasSubscribers(queue.queuePath())) {
             return false;
         }
 

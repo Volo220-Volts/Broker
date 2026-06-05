@@ -16,6 +16,8 @@ import com.volo.broker.broker.services.PublishService;
 import com.volo.broker.broker.subscription.DefaultSubscriptionManager;
 import com.volo.broker.broker.subscription.SubscriptionManager;
 import com.volo.broker.persistence.MessageStore;
+
+
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -136,6 +138,11 @@ class InMemoryBrokerFlowTest {
         @Override
         public long nextId() {
             return value.incrementAndGet();
+        }
+
+        @Override
+        public void initialize(long maxMessageId) {
+                value.set(maxMessageId);
         }
     }
 }

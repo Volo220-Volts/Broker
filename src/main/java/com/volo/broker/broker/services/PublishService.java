@@ -11,7 +11,6 @@ import com.volo.broker.broker.queue.BrokerQueue;
 import com.volo.broker.broker.queue.QueueManager;
 import com.volo.broker.broker.queue.exception.QueueOverflowException;
 import com.volo.broker.broker.queue.settings.PersistenceMode;
-import com.volo.broker.broker.queue.settings.PublishAckMode;
 import com.volo.broker.persistence.MessageStore;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,11 +61,11 @@ public class PublishService {
                 QueuedMessage message = messages.get(i);
 
                 if (queue.settings().persistenceMode() == PersistenceMode.PERSISTENT) {
-                    messageStore.save(queue.name(), message);
+                    messageStore.save(queue.queuePath(), message);
                 }
 
                 queue.enqueue(message);
-                dispatchScheduler.signal(queue.name());
+                dispatchScheduler.signal(queue.queuePath());
             }
 
             return PublishResult.ack(command.clientPublishId(), queues.size());

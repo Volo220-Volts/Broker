@@ -19,7 +19,7 @@ class InMemoryQueueManagerTest {
                 TestQueueSettings.reliable()
         );
 
-        assertThat(queue.name()).isEqualTo("orders.created");
+        assertThat(queue.queuePath()).isEqualTo("orders.created");
         assertThat(queue.settings().persistent()).isTrue();
     }
 
@@ -43,7 +43,7 @@ class InMemoryQueueManagerTest {
         queueManager.declare(QueuePath.of("payments.created"), TestQueueSettings.reliable());
 
         assertThat(queueManager.resolve("orders.*"))
-                .extracting(BrokerQueue::name)
+                .extracting(BrokerQueue::queuePath)
                 .containsExactlyInAnyOrder("orders.created", "orders.deleted");
     }
 

@@ -1,42 +1,65 @@
 package com.volo.broker.broker.recovery;
 
-import java.util.List;
-
+import com.volo.broker.broker.message.MessageIdGenerator;
+import com.volo.broker.broker.queue.QueueManager;
+import com.volo.broker.broker.router.QueuePath;
+import com.volo.broker.persistence.MessageStore;
+import com.volo.broker.persistence.QueueStore;
+import com.volo.broker.persistence.dto.StoredMessageDto;
+import com.volo.broker.persistence.dto.StoredQueueDto;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-import com.volo.broker.broker.dispatch.QueueDispatchScheduler;
-import com.volo.broker.broker.message.QueuedMessage;
-import com.volo.broker.broker.queue.QueueManager;
-import com.volo.broker.persistence.MessageStore;
-
-import lombok.AllArgsConstructor;
+import java.util.Objects;
 
 @Component
-@AllArgsConstructor
-public class BrokerRecoveryService {
-
+public class BrokerRecoveryService implements ApplicationRunner {
+    private final QueueStore queueStore;
     private final MessageStore messageStore;
     private final QueueManager queueManager;
-    private final QueueDispatchScheduler dispatchScheduler;
+    private final MessageIdGenerator messageIdGenerator;
 
-    
-    public void recover() {
+    public BrokerRecoveryService(
+            QueueStore queueStore,
+            MessageStore messageStore,
+            QueueManager queueManager,
+            MessageIdGenerator messageIdGenerator
+    ) {
+        this.queueStore = Objects.requireNonNull(queueStore);
+        this.messageStore = Objects.requireNonNull(messageStore);
+        this.queueManager = Objects.requireNonNull(queueManager);
+        this.messageIdGenerator = Objects.requireNonNull(messageIdGenerator);
+    }
 
-        // Todo: Implement recovery logic to load pending messages from the message store.
+    @Override
+    public void run(ApplicationArguments args) {
+        restoreQueues();
+        restoreMessages();
+        restoreMessageIdGenerator();
+    }
 
-        // List<QueuedMessage> messages = messageStore.loadAllPending();
+    private void restoreQueues() {
+        for (StoredQueueDto queueDto : queueStore.loadAll()) {
+            QueuePath queuePath = QueuePath.of(queueDto.queuePath());
 
-        // for (QueuedMessage message : messages) {
-        //     String queueName = message.getRoutingKey() == null || message.getRoutingKey().isBlank()
-        //             ? "default"
-        //             : message.getRoutingKey();
+            if (queueManager.find(queuePath.value()).isEmpty()) {
+                queueManager.declare(queuePath, queueDto.settings());
+            }
+        }
+    }
 
-        //     if (queueManager.getQueue(queueName).isEmpty()) {
-        //         queueManager.createQueue(queueName);
-        //     }
+    private void restoreMessages() {
+        for (StoredMessageDto messageDto : messageStore.loadAllPending()) {
+            queueManager.find(messageDto.queuePath())
+                    .ifPresentOrElse(
+                            queue -> queue.enqueue(messageDto.message().asRedelivered()),
+                            () -> messageStore.delete(messageDto.message().getMessageId())
+                    );
+        }
+    }
 
-        //     queueManager.enqueue(queueName, message);
-        //     dispatchScheduler.signal(queueName);
-        // }
+    private void restoreMessageIdGenerator() {
+        messageIdGenerator.initialize(messageStore.findMaxMessageId());
     }
 }

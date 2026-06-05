@@ -42,7 +42,7 @@ public class ConsumerAcknowledgementService {
                     lifecycleService.complete(queue, message);
                     queue.touch();
 
-                    dispatchScheduler.signal(queue.name());
+                    dispatchScheduler.signal(queue.queuePath());
                 });
     }
 
@@ -63,7 +63,7 @@ public class ConsumerAcknowledgementService {
                     }
 
                     queue.touch();
-                    dispatchScheduler.signal(queue.name());
+                    dispatchScheduler.signal(queue.queuePath());
                 });
     }
 }

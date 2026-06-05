@@ -7,18 +7,24 @@ import org.hibernate.annotations.JdbcTypeCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "broker_messages")
+@Table(name = "broker_messages",
+    indexes = {
+                @Index(name = "idx_broker_messages_queue_path", columnList = "queue_path"),
+                @Index(name = "idx_broker_messages_queue_created", columnList = "queue_path, created_at"),
+                @Index(name = "idx_broker_messages_created_at", columnList = "created_at")
+    }
+)
 public class StoredMessageEntity {
     @Id
     @Column(name = "id", nullable = false, updatable = false)
     private Long id;
 
-    @Column(name = "queue_name", nullable = false, length = 255)
-    private String queueName;
+    @Column(name = "queue_path", nullable = false, length = 255)
+    private String queuePath;
 
     @Column(name = "routing_key", length = 255)
     private String routingKey;
@@ -33,6 +39,12 @@ public class StoredMessageEntity {
     @Column(name = "created_at", nullable = false)
     private Long createdAt;
 
+    @Column(name = "redelivered", nullable = false)
+    private boolean redelivered;
+
+    @Column(name = "delivery_attempt", nullable = false)
+    private int deliveryAttempt;
+
 
     public Long getId() {
         return id;
@@ -42,12 +54,12 @@ public class StoredMessageEntity {
         this.id = id;
     }
 
-    public String getQueueName() {
-        return queueName;
+    public String getQueuePath() {
+        return queuePath;
     }
 
-    public void setQueueName(String queueName) {
-        this.queueName = queueName;
+    public void setQueuePath(String queuePath) {
+        this.queuePath = queuePath;
     }
 
     public String getRoutingKey() {
@@ -82,4 +94,21 @@ public class StoredMessageEntity {
     public void setCreatedAt(Long createdAt) {
         this.createdAt = createdAt;
     }
+
+    public boolean isRedelivered() {
+        return redelivered;
+    }
+
+    public void setRedelivered(boolean redelivered){
+        this.redelivered = redelivered;
+    }
+
+    public int getDeliveryAttempt() {
+        return deliveryAttempt;
+    }
+
+    public void setDeliveryAttempt(int attempts){
+        deliveryAttempt = attempts;
+    }
+
 }

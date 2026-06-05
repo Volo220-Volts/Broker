@@ -127,5 +127,10 @@ class PublishServiceTest {
         public long nextId() {
             return value.incrementAndGet();
         }
+
+        @Override
+        public void initialize(long maxMessageId) {
+           value.set(maxMessageId);
+        }
     }
 }

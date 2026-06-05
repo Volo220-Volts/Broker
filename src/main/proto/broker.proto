@@ -79,6 +79,7 @@ message QueueLifecyclePolicy {
   bool auto_delete = 1;
   bool idle_timeout_enabled = 2;
   int64 idle_timeout_ms = 3;
+  bool durable = 4;
 }
 
 message QueueCapacityPolicy {
@@ -93,6 +94,20 @@ message DispatchPolicy {
   ConsumerSelectionStrategy consumer_selection_strategy = 2;
 }
 
+message MessageDelivery {
+  int64 delivery_tag = 1;
+  Message message = 2;
+  bool redelivered = 3;
+  int32 delivery_attempt = 4;
+}
+
+message PublishAction {
+  int64 client_publish_id = 1;
+  string routing_key = 2;
+  bytes payload = 3;
+  map<string, string> headers = 4;
+}
+
 message QueueSettings {
   PersistenceMode persistence_mode = 1;
   PublishAckMode publish_ack_mode = 2;
@@ -102,6 +117,12 @@ message QueueSettings {
   QueueLifecyclePolicy lifecycle_policy = 6;
   QueueCapacityPolicy capacity_policy = 7;
   DispatchPolicy dispatch_policy = 8;
+}
+
+message ErrorInfo {
+  ErrorCode code = 1;
+  string message = 2;
+  map<string, string> details = 3;
 }
 
 message PublisherRequest {
@@ -118,13 +139,6 @@ message PublisherResponse {
     PublishNack nack = 2;
     KeepAlive pong = 3;
   }
-}
-
-message PublishAction {
-  int64 client_publish_id = 1;
-  string routing_key = 2;
-  bytes payload = 3;
-  map<string, string> headers = 4;
 }
 
 message PublishAck {
@@ -174,13 +188,6 @@ message NackAction {
   bool requeue = 3;
 }
 
-message MessageDelivery {
-  int64 delivery_tag = 1;
-  Message message = 2;
-  bool redelivered = 3;
-  int32 delivery_attempt = 4;
-}
-
 message Message {
   int64 id = 1;
   bytes payload = 2;
@@ -191,12 +198,6 @@ message Message {
 
 message KeepAlive {
   int64 timestamp = 1;
-}
-
-message ErrorInfo {
-  ErrorCode code = 1;
-  string message = 2;
-  map<string, string> details = 3;
 }
 
 message DeclareQueueRequest {

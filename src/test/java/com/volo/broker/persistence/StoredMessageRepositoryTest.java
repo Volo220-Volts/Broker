@@ -63,7 +63,7 @@ class StoredMessageRepositoryTest {
         StoredMessageEntity entity = new StoredMessageEntity();
 
         entity.setId(messageId);
-        entity.setQueueName(queueName);
+        entity.setQueuePath(queueName);
         entity.setRoutingKey(queueName);
         entity.setPayload(("payload-" + messageId).getBytes());
         entity.setHeadersJson("{}");
