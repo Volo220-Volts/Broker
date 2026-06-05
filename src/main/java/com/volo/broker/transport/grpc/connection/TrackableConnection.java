@@ -5,4 +5,5 @@ public interface TrackableConnection {
     long lastSeenAt();
     boolean isClosed();
     void close();
+    void markSeen();
 }

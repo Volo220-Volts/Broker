@@ -28,7 +28,7 @@ public class Subscription {
     public ConsumerChannel channel() { return channel; }
 
     public boolean canAcceptMore() {
-        return inFlightTracker.size() < prefetchCount && channel.canAcceptMore();
+        return channel.canAcceptMore() && inFlightTracker.size() < prefetchCount;
     }
 
     public long nextDeliveryTag() { return inFlightTracker.nextTag(); }

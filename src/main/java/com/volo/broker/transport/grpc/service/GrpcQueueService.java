@@ -6,6 +6,8 @@ import com.custombroker.grpc.QueueOperationResponse;
 import com.custombroker.grpc.QueueServiceGrpc;
 import com.volo.broker.broker.command.CommandBus;
 import com.volo.broker.broker.command.model.DeclareQueueCommand;
+import com.volo.broker.broker.queue.settings.QueueSettings;
+import com.volo.broker.transport.grpc.mapper.GrpcQueueSettingsConverter;
 import com.volo.broker.broker.command.model.DeleteQueueCommand;
 import com.volo.broker.broker.command.model.QueueOperationResult;
 import com.volo.broker.transport.grpc.mapper.GrpcErrorMapper;
@@ -25,7 +27,11 @@ public class GrpcQueueService extends QueueServiceGrpc.QueueServiceImplBase {
 
     @Override
     public void declareQueue(DeclareQueueRequest request, StreamObserver<QueueOperationResponse> responseObserver) {
-        QueueOperationResult result = commandBus.execute(new DeclareQueueCommand(request.getQueuePath()));
+        QueueSettings settings = request.hasSettings()
+                ? GrpcQueueSettingsConverter.toDomain(request.getSettings())
+                : null;
+
+        QueueOperationResult result = commandBus.execute(new DeclareQueueCommand(request.getQueuePath(), settings));
         sendResponse(result, responseObserver);
     }
 

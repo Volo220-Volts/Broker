@@ -36,7 +36,7 @@ public final class GrpcErrorMapper {
 
     private static ErrorCode toProtoCode(BrokerErrorCode code) {
         if (code == null) {
-            return ErrorCode.ERROR_CODE_UNSPECIFIED;
+            return ErrorCode.INTERNAL_ERROR;
         }
 
         return switch (code) {
@@ -44,6 +44,10 @@ public final class GrpcErrorMapper {
             case PAYLOAD_TOO_LARGE -> ErrorCode.PAYLOAD_TOO_LARGE;
             case UNSUPPORTED_DELIVERY_GUARANTEE -> ErrorCode.UNSUPPORTED_DELIVERY_GUARANTEE;
             case INTERNAL_ERROR -> ErrorCode.INTERNAL_ERROR;
+            case QUEUE_NOT_FOUND -> ErrorCode.QUEUE_NOT_FOUND;
+            case QUEUE_ALREADY_EXISTS -> ErrorCode.QUEUE_ALREADY_EXISTS;
+            case QUEUE_OVERFLOW -> ErrorCode.QUEUE_OVERFLOW;
+            default -> throw new IllegalArgumentException("Unexpected value: " + code);
         };
     }
 

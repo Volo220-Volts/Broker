@@ -21,7 +21,7 @@ public class CommandBus {
         CommandHandler<C, R> handler = (CommandHandler<C, R>) handlers.get(command.getClass());
 
         if (handler == null) {
-            throw new IllegalStateException("No handler found for command type: " + command.getClass());
+            throw new IllegalArgumentException("No handler found for command type: " + command.getClass());
         }
 
         return handler.handle(command);

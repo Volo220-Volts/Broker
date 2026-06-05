@@ -10,7 +10,6 @@ import com.volo.broker.broker.command.model.PublishCommand;
 import com.volo.broker.broker.command.model.PublishResult;
 import com.volo.broker.broker.error.BrokerErrorCode;
 import com.volo.broker.broker.error.BrokerException;
-import com.volo.broker.broker.message.DeliveryGuarantee;
 import com.volo.broker.broker.message.QueuedMessage;
 import com.google.protobuf.ByteString;
 
@@ -18,7 +17,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class GrpcMessageConverters {
-    private static final int MAX_CLIENT_PUBLISH_ID_LENGTH = 128;
     private static final int MAX_ROUTING_KEY_LENGTH = 255;
     private static final int MAX_PAYLOAD_BYTES = 1024 * 1024;
     private static final int MAX_HEADERS = 64;
@@ -33,27 +31,25 @@ public final class GrpcMessageConverters {
 
         return new PublishCommand(
                 action.getClientPublishId(),
-                action.getExchange(),
                 action.getRoutingKey(),
                 action.getPayload().toByteArray(),
-                sanitizeHeaders(action.getHeadersMap()),
-                toDeliveryGuarantee(action.getDeliveryGuarantee())
+                sanitizeHeaders(action.getHeadersMap())
         );
     }
 
-    public static PublisherResponse toPublisherResponse(String clientPublishId, PublishResult result) {
+    public static PublisherResponse toPublisherResponse(PublishResult result) {
         if (result.accepted()) {
             return PublisherResponse.newBuilder()
                     .setAck(PublishAck.newBuilder()
-                            .setClientPublishId(safeClientPublishId(clientPublishId))
-                            .setMessageId(result.messageId())
+                            .setClientPublishId(result.clientPublishId())
+                            .setRoutedQueueCount(result.routedQueueCount())
                             .build())
                     .build();
         }
 
         return PublisherResponse.newBuilder()
                 .setNack(PublishNack.newBuilder()
-                        .setClientPublishId(safeClientPublishId(clientPublishId))
+                        .setClientPublishId(result.clientPublishId())
                         .setError(GrpcErrorMapper.fromCode(result.errorCode(), result.errorMessage()))
                         .build())
                 .build();
@@ -86,10 +82,6 @@ public final class GrpcMessageConverters {
             throw new BrokerException(BrokerErrorCode.INVALID_REQUEST, "Publish action is required");
         }
 
-        if (action.getClientPublishId().length() > MAX_CLIENT_PUBLISH_ID_LENGTH) {
-            throw new BrokerException(BrokerErrorCode.INVALID_REQUEST, "clientPublishId is too long");
-        }
-
         if (action.getRoutingKey() == null || action.getRoutingKey().isBlank()) {
             throw new BrokerException(BrokerErrorCode.INVALID_REQUEST, "routingKey is required");
         }
@@ -105,21 +97,6 @@ public final class GrpcMessageConverters {
         if (action.getPayload().size() > MAX_PAYLOAD_BYTES) {
             throw new BrokerException(BrokerErrorCode.PAYLOAD_TOO_LARGE, "payload size exceeds broker limit");
         }
-
-        if (action.getDeliveryGuarantee() == com.custombroker.grpc.DeliveryGuarantee.DELIVERY_GUARANTEE_UNSPECIFIED) {
-            throw new BrokerException(BrokerErrorCode.INVALID_REQUEST, "deliveryGuarantee is required");
-        }
-    }
-
-    private static DeliveryGuarantee toDeliveryGuarantee(com.custombroker.grpc.DeliveryGuarantee guarantee) {
-        return switch (guarantee) {
-            case AT_MOST_ONCE -> DeliveryGuarantee.AT_MOST_ONCE;
-            case AT_LEAST_ONCE -> DeliveryGuarantee.AT_LEAST_ONCE;
-            case DELIVERY_GUARANTEE_UNSPECIFIED, UNRECOGNIZED -> throw new BrokerException(
-                    BrokerErrorCode.UNSUPPORTED_DELIVERY_GUARANTEE,
-                    "Unsupported delivery guarantee: " + guarantee
-            );
-        };
     }
 
     private static Map<String, String> sanitizeHeaders(Map<String, String> headers) {
@@ -153,9 +130,5 @@ public final class GrpcMessageConverters {
         }
 
         return Map.copyOf(sanitized);
-    }
-
-    private static String safeClientPublishId(String clientPublishId) {
-        return clientPublishId == null ? "" : clientPublishId;
     }
 }

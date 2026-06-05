@@ -32,6 +32,7 @@ public final class PublisherConnection implements TrackableConnection {
         return closed.get() || observer.isClosed();
     }
 
+    @Override
     public void markSeen() {
         lastSeenAt.set(System.currentTimeMillis());
     }

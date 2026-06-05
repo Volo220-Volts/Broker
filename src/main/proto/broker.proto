@@ -6,7 +6,6 @@ option java_multiple_files = true;
 option java_package = "com.custombroker.grpc";
 option java_outer_classname = "BrokerProto";
 
-
 service PublisherService {
   rpc OpenPublisherChannel(stream PublisherRequest) returns (stream PublisherResponse);
 }
@@ -20,18 +19,89 @@ service QueueService {
   rpc DeleteQueue(DeleteQueueRequest) returns (QueueOperationResponse);
 }
 
-enum DeliveryGuarantee {
-  DELIVERY_GUARANTEE_UNSPECIFIED = 0;
-  AT_MOST_ONCE = 1;
-  AT_LEAST_ONCE = 2;
+enum PersistenceMode {
+  PERSISTENCE_MODE_UNSPECIFIED = 0;
+  MEMORY_ONLY = 1;
+  PERSISTENT = 2;
+}
+
+enum PublishAckMode {
+  PUBLISH_ACK_MODE_UNSPECIFIED = 0;
+  PUBLISH_ACK_NONE = 1;
+  PUBLISH_ACK_ENABLED = 2;
+}
+
+enum ConsumerAckMode {
+  CONSUMER_ACK_MODE_UNSPECIFIED = 0;
+  CONSUMER_ACK_NONE = 1;
+  CONSUMER_ACK_ENABLED = 2;
+}
+
+enum OverflowPolicy {
+  OVERFLOW_POLICY_UNSPECIFIED = 0;
+  REJECT_PUBLISH = 1;
+  DROP_OLDEST = 2;
+  DROP_NEWEST = 3;
+}
+
+enum ConsumerSelectionStrategy {
+  CONSUMER_SELECTION_STRATEGY_UNSPECIFIED = 0;
+  ROUND_ROBIN = 1;
+  FIRST_AVAILABLE = 2;
+  LEAST_INFLIGHT = 3;
 }
 
 enum ErrorCode {
   ERROR_CODE_UNSPECIFIED = 0;
   INVALID_REQUEST = 1;
   PAYLOAD_TOO_LARGE = 2;
-  UNSUPPORTED_DELIVERY_GUARANTEE = 3;
-  INTERNAL_ERROR = 4;
+  ROUTE_NOT_FOUND = 3;
+  QUEUE_ALREADY_EXISTS = 4;
+  QUEUE_NOT_FOUND = 5;
+  QUEUE_OVERFLOW = 6;
+  UNSUPPORTED_DELIVERY_GUARANTEE = 7;
+  INTERNAL_ERROR = 8;
+}
+
+message RedeliveryPolicy {
+  bool enabled = 1;
+  int32 max_attempts = 2;
+  bool requeue_on_disconnect = 3;
+  bool requeue_on_send_failure = 4;
+}
+
+message MessageRetentionPolicy {
+  bool ttl_enabled = 1;
+  int64 ttl_ms = 2;
+}
+
+message QueueLifecyclePolicy {
+  bool auto_delete = 1;
+  bool idle_timeout_enabled = 2;
+  int64 idle_timeout_ms = 3;
+}
+
+message QueueCapacityPolicy {
+  bool limited = 1;
+  int32 max_messages = 2;
+  int64 max_bytes = 3;
+  OverflowPolicy overflow_policy = 4;
+}
+
+message DispatchPolicy {
+  int32 prefetch_count = 1;
+  ConsumerSelectionStrategy consumer_selection_strategy = 2;
+}
+
+message QueueSettings {
+  PersistenceMode persistence_mode = 1;
+  PublishAckMode publish_ack_mode = 2;
+  ConsumerAckMode consumer_ack_mode = 3;
+  RedeliveryPolicy redelivery_policy = 4;
+  MessageRetentionPolicy retention_policy = 5;
+  QueueLifecyclePolicy lifecycle_policy = 6;
+  QueueCapacityPolicy capacity_policy = 7;
+  DispatchPolicy dispatch_policy = 8;
 }
 
 message PublisherRequest {
@@ -51,21 +121,19 @@ message PublisherResponse {
 }
 
 message PublishAction {
-  string client_publish_id = 1;
-  string exchange = 2;
-  string routing_key = 3;
-  bytes payload = 4;
-  map<string, string> headers = 5;
-  DeliveryGuarantee delivery_guarantee = 6;
+  int64 client_publish_id = 1;
+  string routing_key = 2;
+  bytes payload = 3;
+  map<string, string> headers = 4;
 }
 
 message PublishAck {
-  string client_publish_id = 1;
-  int64 message_id = 2;
+  int64 client_publish_id = 1;
+  int32 routed_queue_count = 2;
 }
 
 message PublishNack {
-  string client_publish_id = 1;
+  int64 client_publish_id = 1;
   ErrorInfo error = 2;
 }
 
@@ -133,6 +201,7 @@ message ErrorInfo {
 
 message DeclareQueueRequest {
   string queue_path = 1;
+  QueueSettings settings = 2;
 }
 
 message DeleteQueueRequest {

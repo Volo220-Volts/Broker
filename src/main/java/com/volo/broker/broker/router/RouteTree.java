@@ -1,14 +1,11 @@
 package com.volo.broker.broker.router;
 
-import org.springframework.stereotype.Component;
-
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-@Component
 public class RouteTree {
     private final RouteNode root = new RouteNode("");
 

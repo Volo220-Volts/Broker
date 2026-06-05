@@ -12,7 +12,7 @@ public record SubscribeCommand(
 
     public SubscribeCommand(String queueName, int prefetchCount, String consumerTag, ConsumerChannel channel) {
         this.queueName = queueName;
-        this.prefetchCount = Math.max(1, prefetchCount);
+        this.prefetchCount = prefetchCount;
         this.consumerTag = consumerTag;
         this.channel = channel;
     }

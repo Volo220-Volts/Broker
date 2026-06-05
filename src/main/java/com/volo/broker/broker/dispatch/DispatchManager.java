@@ -4,13 +4,14 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 
-import com.volo.broker.broker.message.DeliveryGuarantee;
 import com.volo.broker.broker.message.MessageDelivery;
 import com.volo.broker.broker.message.QueuedMessage;
 import com.volo.broker.broker.queue.QueueManager;
+import com.volo.broker.broker.queue.settings.ConsumerAckMode;
+import com.volo.broker.broker.services.MessageLifecycleService;
+import com.volo.broker.broker.queue.BrokerQueue;
 import com.volo.broker.broker.subscription.Subscription;
 import com.volo.broker.broker.subscription.SubscriptionManager;
-
 import lombok.AllArgsConstructor;
 
 @Component
@@ -18,56 +19,77 @@ import lombok.AllArgsConstructor;
 public class DispatchManager {
     private final QueueManager queueManager;
     private final SubscriptionManager subscriptionManager;
+    private final MessageLifecycleService lifecycleService;
     
-    public void dispatchLoop(String queueName) {
+     public void dispatchLoop(String queueName) {
         while (true) {
-            Optional<Subscription> maybeSub = subscriptionManager.nextReady(queueName);
-            if (maybeSub.isEmpty()) {
+            var queue = queueManager.find(queueName).get();
+            Optional<Subscription> maybeSubscription = subscriptionManager.nextReady(
+                    queueName,
+                    queue.settings().dispatchPolicy().consumerSelectionStrategy()
+            );
+
+            if (maybeSubscription.isEmpty()) {
                 return;
             }
 
-            Subscription sub = maybeSub.get();
-            if(!sub.canAcceptMore()) break;
+            Subscription subscription = maybeSubscription.get();
 
-            Optional<QueuedMessage> maybeMessage = queueManager.poll(queueName);
+            if (!subscription.canAcceptMore()) {
+                return;
+            }
+
+
+            Optional<QueuedMessage> maybeMessage = queue.poll();
             if (maybeMessage.isEmpty()) {
                 return;
             }
 
             QueuedMessage message = maybeMessage.get();
 
-            if(message.getDeliveryGuarantee() == DeliveryGuarantee.AT_LEAST_ONCE){
-                dispatchAtLeastOnce(queueName, sub, message);
-            } else {
-                dispatchAtMostOnce(sub, message);
+            if (lifecycleService.isExpired(queue, message)) {
+                lifecycleService.complete(queue, message);
+                continue;
             }
+
+            dispatch(queue, subscription, message);
         }
     }
-    
-    private void dispatchAtMostOnce(Subscription sub, QueuedMessage message){
-        long deliveryTag = sub.nextDeliveryTag();
-        try{
-            sub.channel().send(MessageDelivery.of(deliveryTag, message));
-        } catch (Throwable e) {}
-    }
-    
-    private void dispatchAtLeastOnce(
-        String queueName,
-        Subscription sub,
-        QueuedMessage message) 
-    {
-        long deliveryTag = sub.nextDeliveryTag();
+    private void dispatch(
+            BrokerQueue queue,
+            Subscription subscription,
+            QueuedMessage message
+    ) {
+        long deliveryTag = subscription.nextDeliveryTag();
+        boolean consumerAckRequired = queue.settings().consumerAckMode() == ConsumerAckMode.ENABLED;
 
-        sub.track(deliveryTag, message);
+        if (consumerAckRequired) {
+            subscription.track(deliveryTag, message);
+        }
 
         try {
-            sub.channel().send(MessageDelivery.of(deliveryTag, message));
+            subscription.channel().send(MessageDelivery.of(deliveryTag, message));
 
-        } catch (Throwable ex) {
-            sub.remove(deliveryTag);
+            queue.touch();
 
-            queueManager.requeue(queueName, message.asRedelivered());
-            return;
+            if (!consumerAckRequired) {
+                lifecycleService.complete(queue, message);
+            }
+
+        } catch (Throwable throwable) {
+             if (consumerAckRequired) {
+                subscription.remove(deliveryTag);
+            }
+
+            boolean shouldRequeue = queue.settings().redeliveryPolicy().requeueOnSendFailure()
+                    && lifecycleService.canRedeliver(queue, message);
+
+            if (shouldRequeue) {
+                queue.requeue(message.asRedelivered());
+                return;
+            }
+
+            lifecycleService.complete(queue, message);
         }
     }
 

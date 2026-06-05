@@ -44,7 +44,7 @@ public class QueueDispatchScheduler {
     }
 
     private boolean hasWork(String queueName){
-        return queueManager.size(queueName) > 0;
+        return queueManager.find(queueName).get().size() > 0;
     }
 
     public void shutdown() {

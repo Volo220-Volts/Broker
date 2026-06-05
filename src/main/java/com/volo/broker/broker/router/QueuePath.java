@@ -1,95 +1,47 @@
 package com.volo.broker.broker.router;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
-public final class QueuePath {
-    private static final int MAX_LENGTH = 255;
-
-    private final String value;
-    private final String routePath;
-    private final String queueName;
-    private final List<String> segments;
-
-    private QueuePath(
-            String value,
-            String routePath,
-            String queueName,
-            List<String> segments
-    ) {
-        this.value = value;
-        this.routePath = routePath;
-        this.queueName = queueName;
-        this.segments = List.copyOf(segments);
-    }
-
-    public static QueuePath of(String value) {
-        String normalized = normalize(value);
-
-        if (normalized.isBlank()) {
+public record QueuePath(
+        String value,
+        String routePath,
+        String queueName,
+        List<String> segments
+) {
+    public QueuePath {
+        if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("queue path is required");
         }
 
-        if (normalized.length() > MAX_LENGTH) {
-            throw new IllegalArgumentException("queue path is too long");
+        if (queueName == null || queueName.isBlank()) {
+            throw new IllegalArgumentException("queue name is required");
         }
 
-        if (normalized.contains("*") || normalized.contains("#")) {
-            throw new IllegalArgumentException("queue path must not contain wildcards");
-        }
+        routePath = routePath == null ? "" : routePath;
+        segments = List.copyOf(segments);
+    }
 
-        List<String> segments = Arrays.stream(normalized.split("\\."))
-                .map(String::trim)
-                .filter(segment -> !segment.isBlank())
-                .toList();
+    public static QueuePath of(String rawValue) {
+        RouteSegments.ParsedRoute parsed = RouteSegments.parseQueuePath(rawValue);
 
-        if (segments.isEmpty()) {
-            throw new IllegalArgumentException("queue path must contain at least one segment");
-        }
+        List<String> segments = parsed.segments();
 
         String queueName = segments.get(segments.size() - 1);
+
         String routePath = segments.size() == 1
                 ? ""
                 : String.join(".", segments.subList(0, segments.size() - 1));
 
-        return new QueuePath(normalized, routePath, queueName, segments);
-    }
-
-    public String value() {
-        return value;
-    }
-
-    public String routePath() {
-        return routePath;
-    }
-
-    public String queueName() {
-        return queueName;
-    }
-
-    public List<String> segments() {
-        return segments;
+        return new QueuePath(
+                parsed.value(),
+                routePath,
+                queueName,
+                segments
+        );
     }
 
     public boolean hasRoutePath() {
         return !routePath.isBlank();
-    }
-
-    private static String normalize(String value) {
-        return value == null ? "" : value.trim();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof QueuePath that)) return false;
-        return value.equals(that.value);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(value);
     }
 
     @Override

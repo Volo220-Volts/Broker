@@ -46,7 +46,7 @@ public class GrpcPublisherService extends PublisherServiceGrpc.PublisherServiceI
                 if (connection.isClosed()) {
                     return;
                 }
-
+                
                 connection.markSeen();
 
                 try {
@@ -54,7 +54,7 @@ public class GrpcPublisherService extends PublisherServiceGrpc.PublisherServiceI
                 } catch (BrokerException exception) {
                     connection.send(PublisherResponse.newBuilder()
                             .setNack(PublishNack.newBuilder()
-                                    .setClientPublishId(safeClientPublishId(getClientPublishId(request)))
+                                    .setClientPublishId(getClientPublishId(request))
                                     .setError(GrpcErrorMapper.toProto(exception))
                                     .build())
                             .build());
@@ -62,7 +62,7 @@ public class GrpcPublisherService extends PublisherServiceGrpc.PublisherServiceI
                     log.error("Unexpected publisher request error", throwable);
                     connection.send(PublisherResponse.newBuilder()
                             .setNack(PublishNack.newBuilder()
-                                    .setClientPublishId(safeClientPublishId(getClientPublishId(request)))
+                                    .setClientPublishId(getClientPublishId(request))
                                     .setError(GrpcErrorMapper.internalError(throwable))
                                     .build())
                             .build());
@@ -95,22 +95,18 @@ public class GrpcPublisherService extends PublisherServiceGrpc.PublisherServiceI
     }
 
     private void handlePublish(PublisherConnection connection, PublishAction action) {
-        String clientPublishId = action.getClientPublishId();
+        Long clientPublishId = action.getClientPublishId();
         try {
             PublishCommand command = GrpcMessageConverters.toPublishCommand(action);
             PublishResult result = commandBus.execute(command);
-            connection.send(GrpcMessageConverters.toPublisherResponse(clientPublishId, result));
+            connection.send(GrpcMessageConverters.toPublisherResponse(result));
         } catch (BrokerException exception) {
-            connection.send(GrpcMessageConverters.toPublisherResponse(
-                    clientPublishId,
-                    PublishResult.nack(exception.code(), exception.getMessage())
-            ));
+            PublishResult result = PublishResult.nack(clientPublishId, exception.code(), exception.getMessage());
+            connection.send(GrpcMessageConverters.toPublisherResponse(result));
         } catch (Throwable throwable) {
             log.error("Publish failed", throwable);
-            connection.send(GrpcMessageConverters.toPublisherResponse(
-                    clientPublishId,
-                    PublishResult.nack(BrokerErrorCode.INTERNAL_ERROR, "Message was not accepted by broker")
-            ));
+            PublishResult result = PublishResult.nack(clientPublishId, BrokerErrorCode.INTERNAL_ERROR, "Message was not accepted by broker");
+            connection.send(GrpcMessageConverters.toPublisherResponse(result));
         }
     }
 
@@ -119,14 +115,10 @@ public class GrpcPublisherService extends PublisherServiceGrpc.PublisherServiceI
         connection.close();
     }
 
-    private static String getClientPublishId(PublisherRequest request) {
+    private static Long getClientPublishId(PublisherRequest request) {
         if (request == null || request.getRequestCase() != PublisherRequest.RequestCase.PUBLISH) {
-            return "";
+            return 0L;
         }
         return request.getPublish().getClientPublishId();
-    }
-
-    private static String safeClientPublishId(String clientPublishId) {
-        return clientPublishId == null ? "" : clientPublishId;
     }
 }

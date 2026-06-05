@@ -12,7 +12,6 @@ public final class QueuedMessage {
     private final Map<String, String> headers;
     private final String routingKey;
     private final long createdAt;
-    private final DeliveryGuarantee deliveryGuarantee;
     private final boolean redelivered;
     private final int deliveryAttempt;
 
@@ -22,7 +21,6 @@ public final class QueuedMessage {
             Map<String, String> headers,
             String routingKey,
             long createdAt,
-            DeliveryGuarantee deliveryGuarantee,
             boolean redelivered,
             int deliveryAttempt
     ) {
@@ -31,9 +29,6 @@ public final class QueuedMessage {
         this.headers = headers == null ? Map.of() : Map.copyOf(headers);
         this.routingKey = routingKey;
         this.createdAt = createdAt;
-        this.deliveryGuarantee = deliveryGuarantee == null
-                ? DeliveryGuarantee.AT_LEAST_ONCE
-                : deliveryGuarantee;
         this.redelivered = redelivered;
         this.deliveryAttempt = Math.max(0, deliveryAttempt);
     }
@@ -45,9 +40,17 @@ public final class QueuedMessage {
                 headers,
                 routingKey,
                 createdAt,
-                deliveryGuarantee,
                 true,
                 deliveryAttempt + 1
         );
+    }
+
+    public int sizeBytes() {
+        int headersBytes = headers.entrySet()
+                .stream()
+                .mapToInt(entry -> entry.getKey().length() + entry.getValue().length())
+                .sum();
+
+        return payload.length + headersBytes;
     }
 }

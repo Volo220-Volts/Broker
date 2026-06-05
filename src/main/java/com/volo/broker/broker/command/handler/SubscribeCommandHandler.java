@@ -25,19 +25,54 @@ public class SubscribeCommandHandler implements CommandHandler<SubscribeCommand,
 
     @Override
     public Void handle(SubscribeCommand command) {
-        if(queueManager.getQueue(command.queueName()).isEmpty()){
-            queueManager.createQueue(command.queueName());
+        validate(command);
+
+        var maybeQueue = queueManager.find(command.queueName());
+
+        if(maybeQueue.isEmpty()){
+            //queueManager.createQueue(command.queueName());
+            throw new IllegalArgumentException("Queue does not exist: " + command.queueName());
         }
+
+        var queue = maybeQueue.get();
+
+        // if (!definitionRegistry.exists(command.queueName())) {
+        //     definitionRegistry.declare(QueueDefinition.create(command.queueName()));
+        // }
+
+
+        int effectivePrefetch = resolvePrefetch(
+                command.prefetchCount(),
+                queue.settings().dispatchPolicy().prefetchCount()
+        );
 
         subscriptionManager.register(
             command.queueName(),
             command.channel(),
-            command.prefetchCount()
+            effectivePrefetch
         );
 
         dispatchScheduler.signal(command.queueName());
 
         return null;
+    }
+
+      private int resolvePrefetch(int requestedPrefetch, int queuePrefetch) {
+        if (requestedPrefetch <= 0) {
+            return queuePrefetch;
+        }
+
+        return Math.min(requestedPrefetch, queuePrefetch);
+    }
+
+    private void validate(SubscribeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("subscribe command must not be null");
+        }
+
+        if (command.queueName() == null || command.queueName().isBlank()) {
+            throw new IllegalArgumentException("queueName is required");
+        }
     }
 
 }

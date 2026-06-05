@@ -1,60 +1,49 @@
 package com.volo.broker.broker.router;
 
-import java.util.Arrays;
 import java.util.List;
 
-public final class RoutePattern {
-    private static final int MAX_LENGTH = 255;
+public record RoutePattern(
+        String value,
+        List<String> segments
+) {
+    private static final String SINGLE_SEGMENT_WILDCARD = "*";
+    private static final String MULTI_SEGMENT_WILDCARD = "#";
 
-    private final List<String> segments;
-
-    private RoutePattern(List<String> segments) {
-        this.segments = List.copyOf(segments);
-    }
-
-    public static RoutePattern of(String value) {
-        String normalized = normalize(value);
-
-        if (normalized.isBlank()) {
+    public RoutePattern {
+        if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("routing key is required");
         }
 
-        if (normalized.length() > MAX_LENGTH) {
-            throw new IllegalArgumentException("routing key is too long");
-        }
+        segments = List.copyOf(segments);
+    }
 
-        List<String> segments = Arrays.stream(normalized.split("\\."))
-                .map(String::trim)
-                .filter(segment -> !segment.isBlank())
-                .toList();
+    public static RoutePattern of(String rawValue) {
+        RouteSegments.ParsedRoute parsed = RouteSegments.parseRoutePattern(rawValue);
 
-        if (segments.isEmpty()) {
-            throw new IllegalArgumentException("routing key must contain at least one segment");
-        }
+        return new RoutePattern(
+                parsed.value(),
+                parsed.segments()
+        );
+    }
 
-        for (String segment : segments) {
-            if (segment.isBlank()) {
-                throw new IllegalArgumentException("routing key contains invalid segment");
-            }
-            if (segment.contains("*") || segment.contains("#")) {
-                if (!segment.equals("*") && !segment.equals("#")) {
-                    throw new IllegalArgumentException("wildcards must be standalone segments");
-                }
-            }
-        }
-
-        return new RoutePattern(segments);
+    public boolean hasWildcard() {
+        return segments.stream()
+                .anyMatch(RoutePattern::isWildcardSegment);
     }
 
     public static boolean containsWildcard(String routingKey) {
-        return routingKey != null && (routingKey.contains("*") || routingKey.contains("#"));
+        return routingKey != null
+                && (routingKey.contains(SINGLE_SEGMENT_WILDCARD)
+                || routingKey.contains(MULTI_SEGMENT_WILDCARD));
     }
 
-    public List<String> segments() {
-        return segments;
+    private static boolean isWildcardSegment(String segment) {
+        return SINGLE_SEGMENT_WILDCARD.equals(segment)
+                || MULTI_SEGMENT_WILDCARD.equals(segment);
     }
 
-    private static String normalize(String value) {
-        return value == null ? "" : value.trim();
+    @Override
+    public String toString() {
+        return value;
     }
 }

@@ -1,5 +1,9 @@
 package com.volo.broker.persistence.entity;
 
+import java.sql.Types;
+
+import org.hibernate.annotations.JdbcTypeCode;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -19,15 +23,12 @@ public class StoredMessageEntity {
     @Column(name = "routing_key", length = 255)
     private String routingKey;
 
-    @Lob
+    @JdbcTypeCode(Types.VARBINARY)
     @Column(name = "payload", nullable = false)
     private byte[] payload;
 
     @Column(name = "headers_json", length = 8192)
     private String headersJson;
-
-    @Column(name = "delivery_guarantee", nullable = false, length = 32)
-    private String deliveryGuarantee;
 
     @Column(name = "created_at", nullable = false)
     private Long createdAt;
@@ -71,14 +72,6 @@ public class StoredMessageEntity {
 
     public void setHeadersJson(String headersJson) {
         this.headersJson = headersJson;
-    }
-
-    public String getDeliveryGuarantee() {
-        return deliveryGuarantee;
-    }
-
-    public void setDeliveryGuarantee(String deliveryGuarantee) {
-        this.deliveryGuarantee = deliveryGuarantee;
     }
 
 

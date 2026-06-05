@@ -7,7 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.volo.broker.broker.message.DeliveryGuarantee;
 import com.volo.broker.broker.message.QueuedMessage;
 import com.volo.broker.persistence.entity.StoredMessageEntity;
 
@@ -59,7 +58,6 @@ public class JpaMessageStore implements MessageStore {
         entity.setRoutingKey(message.getRoutingKey());
         entity.setPayload(message.getPayload());
         entity.setHeadersJson(toJson(message.getHeaders()));
-        entity.setDeliveryGuarantee(message.getDeliveryGuarantee().name());
         entity.setCreatedAt(message.getCreatedAt());
 
         repository.save(entity);
@@ -99,7 +97,6 @@ public class JpaMessageStore implements MessageStore {
                 fromJson(entity.getHeadersJson()),
                 entity.getRoutingKey(),
                 entity.getCreatedAt(),
-                DeliveryGuarantee.valueOf(entity.getDeliveryGuarantee()),
                 true,
                 1
         );

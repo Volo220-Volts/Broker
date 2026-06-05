@@ -21,19 +21,22 @@ public class BrokerRecoveryService {
 
     
     public void recover() {
-        List<QueuedMessage> messages = messageStore.loadAllPending();
 
-        for (QueuedMessage message : messages) {
-            String queueName = message.getRoutingKey() == null || message.getRoutingKey().isBlank()
-                    ? "default"
-                    : message.getRoutingKey();
+        // Todo: Implement recovery logic to load pending messages from the message store.
 
-            if (queueManager.getQueue(queueName).isEmpty()) {
-                queueManager.createQueue(queueName);
-            }
+        // List<QueuedMessage> messages = messageStore.loadAllPending();
 
-            queueManager.enqueue(queueName, message);
-            dispatchScheduler.signal(queueName);
-        }
+        // for (QueuedMessage message : messages) {
+        //     String queueName = message.getRoutingKey() == null || message.getRoutingKey().isBlank()
+        //             ? "default"
+        //             : message.getRoutingKey();
+
+        //     if (queueManager.getQueue(queueName).isEmpty()) {
+        //         queueManager.createQueue(queueName);
+        //     }
+
+        //     queueManager.enqueue(queueName, message);
+        //     dispatchScheduler.signal(queueName);
+        // }
     }
 }

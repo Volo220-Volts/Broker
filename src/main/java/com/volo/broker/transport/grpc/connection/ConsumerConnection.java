@@ -42,6 +42,7 @@ public final class ConsumerConnection implements TrackableConnection {
         return closed.get() || observer.isClosed();
     }
 
+    @Override
     public void markSeen() {
         lastSeenAt.set(System.currentTimeMillis());
     }
