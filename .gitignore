@@ -28,6 +28,7 @@ replay_pid*
 
 
 
+data/
 target/
 pom.xml.tag
 pom.xml.releaseBackup

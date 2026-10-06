@@ -5,12 +5,11 @@ spring:
     url: jdbc:postgresql://localhost:5432/broker
     driver-class-name: org.postgresql.Driver
     username: postgres
-    password: 
+    password: postgres
   jpa:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
-
 
 broker:
   publisher:
