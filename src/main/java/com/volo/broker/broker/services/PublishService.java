@@ -13,7 +13,6 @@ import com.volo.broker.broker.queue.exception.QueueOverflowException;
 import com.volo.broker.broker.queue.settings.PersistenceMode;
 import com.volo.broker.persistence.MessageStore;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
@@ -37,7 +36,6 @@ public class PublishService {
         this.messageIdGenerator = Objects.requireNonNull(messageIdGenerator);
     }
 
-    @Transactional
     public PublishResult publish(PublishCommand command) {
         try {
             validate(command);

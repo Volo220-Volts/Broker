@@ -5,7 +5,6 @@ import com.volo.broker.broker.router.RouteTree;
 import com.volo.broker.broker.queue.exception.QueueAlreadyExistsException;
 import com.volo.broker.broker.queue.exception.QueueNotFoundException;
 import com.volo.broker.broker.queue.settings.QueueSettings;
-import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.List;
@@ -13,7 +12,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-@Component
 public class InMemoryQueueManager implements QueueManager {
     private final ConcurrentMap<String, BrokerQueue> queues = new ConcurrentHashMap<>();
     private final RouteTree routeTree = new RouteTree();

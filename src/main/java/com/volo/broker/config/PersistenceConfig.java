@@ -6,14 +6,13 @@ import java.nio.file.Path;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 
 import com.volo.broker.persistence.AolMessageStore;
+import com.volo.broker.persistence.FileQueueMetadataStore;
 import com.volo.broker.persistence.MessageStore;
-import com.volo.broker.persistence.QueueStore;
-import com.volo.broker.persistence.aol.api.QueueStorage;
-import com.volo.broker.persistence.aol.store.AolQueueStorage;
-
+import com.volo.broker.persistence.QueueMetadataStore;
+import com.volo.broker.persistence.aol.api.MessageLogStorage;
+import com.volo.broker.persistence.aol.store.AolMessageLogStorage;
 
 @Configuration 
 public class PersistenceConfig {
@@ -21,14 +20,18 @@ public class PersistenceConfig {
     @Value("${broker.aol.base-dir:data/aol}")
     private Path baseDir;
 
-    @Bean 
-    public QueueStorage aolQueueStorage() throws IOException{
-        return new AolQueueStorage(baseDir);
+    @Bean
+    public QueueMetadataStore queueMetadataStore() {
+        return new FileQueueMetadataStore(baseDir);
     }
 
-    @Bean
-    @Primary 
-    public MessageStore aolMessageStore(QueueStorage aolQueueStorage, QueueStore queueStore) {
-        return new AolMessageStore(aolQueueStorage, queueStore);
+    @Bean(destroyMethod = "close") 
+    public MessageLogStorage messageLogStorage() throws IOException {
+        return new AolMessageLogStorage(baseDir);
+    }
+
+    @Bean(destroyMethod = "close")
+    public MessageStore messageStore(MessageLogStorage messageLogStorage, QueueMetadataStore queueMetadataStore) {
+        return new AolMessageStore(messageLogStorage, queueMetadataStore);
     }
 }

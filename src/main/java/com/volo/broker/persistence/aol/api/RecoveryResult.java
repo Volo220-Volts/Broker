@@ -5,10 +5,7 @@ import com.volo.broker.broker.message.QueuedMessage;
 import java.util.List;
 
 /**
- * The result of {@link QueueStorage#recover} for a single queue.
- *
- * @param liveMessages    unacknowledged messages, ordered by offset
- * @param nextQueueOffset the offset that will be assigned to the next message appended to this queue
+ * The result of {@link MessageLogStorage#recover} for a single queue.
  */
 public record RecoveryResult(List<QueuedMessage> liveMessages, long nextQueueOffset) {
 

@@ -4,7 +4,7 @@ import com.volo.broker.broker.message.MessageIdGenerator;
 import com.volo.broker.broker.queue.QueueManager;
 import com.volo.broker.broker.router.QueuePath;
 import com.volo.broker.persistence.MessageStore;
-import com.volo.broker.persistence.QueueStore;
+import com.volo.broker.persistence.QueueMetadataStore;
 import com.volo.broker.persistence.dto.StoredMessageDto;
 import com.volo.broker.persistence.dto.StoredQueueDto;
 import org.springframework.boot.ApplicationArguments;
@@ -15,18 +15,18 @@ import java.util.Objects;
 
 @Component
 public class BrokerRecoveryService implements ApplicationRunner {
-    private final QueueStore queueStore;
+    private final QueueMetadataStore queueMetadataStore;
     private final MessageStore messageStore;
     private final QueueManager queueManager;
     private final MessageIdGenerator messageIdGenerator;
 
     public BrokerRecoveryService(
-            QueueStore queueStore,
+            QueueMetadataStore queueMetadataStore,
             MessageStore messageStore,
             QueueManager queueManager,
             MessageIdGenerator messageIdGenerator
     ) {
-        this.queueStore = Objects.requireNonNull(queueStore);
+        this.queueMetadataStore = Objects.requireNonNull(queueMetadataStore);
         this.messageStore = Objects.requireNonNull(messageStore);
         this.queueManager = Objects.requireNonNull(queueManager);
         this.messageIdGenerator = Objects.requireNonNull(messageIdGenerator);
@@ -40,7 +40,7 @@ public class BrokerRecoveryService implements ApplicationRunner {
     }
 
     private void restoreQueues() {
-        for (StoredQueueDto queueDto : queueStore.loadAll()) {
+        for (StoredQueueDto queueDto : queueMetadataStore.loadAll()) {
             QueuePath queuePath = QueuePath.of(queueDto.queuePath());
 
             if (queueManager.find(queuePath.value()).isEmpty()) {

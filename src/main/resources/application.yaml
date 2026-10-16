@@ -1,17 +1,10 @@
 spring:
   application:
     name: broker
-  datasource:
-    url: jdbc:postgresql://localhost:5432/broker
-    driver-class-name: org.postgresql.Driver
-    username: postgres
-    password: postgres
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: true
 
 broker:
+  aol:
+    base-dir: data/aol
   publisher:
     keep-alive:
       timeout-ms: 30000
@@ -22,7 +15,3 @@ broker:
       check-period-ms: 5000
   dispatch:
     threads: 2
-
-
-  
-

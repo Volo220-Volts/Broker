@@ -1,7 +1,7 @@
 package com.volo.broker.persistence.aol.api;
 
 /**
- * The result of a successful {@link QueueStorage#append} call.
+ * The result of a successful {@link MessageLogStorage#append} call.
  *
  * @param queueOffset      offset assigned to the message within its queue
  * @param physicalPosition byte offset in the file where the record begins.

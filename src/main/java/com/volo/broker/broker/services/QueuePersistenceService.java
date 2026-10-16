@@ -2,32 +2,32 @@ package com.volo.broker.broker.services;
 
 import com.volo.broker.broker.queue.BrokerQueue;
 import com.volo.broker.persistence.MessageStore;
-import com.volo.broker.persistence.QueueStore;
+import com.volo.broker.persistence.QueueMetadataStore;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
 
 @Service
 public class QueuePersistenceService {
-    private final QueueStore queueStore;
+    private final QueueMetadataStore queueMetadataStore;
     private final MessageStore messageStore;
 
     public QueuePersistenceService(
-            QueueStore queueStore,
+            QueueMetadataStore queueMetadataStore,
             MessageStore messageStore
     ) {
-        this.queueStore = Objects.requireNonNull(queueStore);
+        this.queueMetadataStore = Objects.requireNonNull(queueMetadataStore);
         this.messageStore = Objects.requireNonNull(messageStore);
     }
 
     public void saveQueueIfDurable(BrokerQueue queue) {
         if (queue.settings().lifecyclePolicy().durable()) {
-            queueStore.save(queue);
+            queueMetadataStore.save(queue);
         }
     }
 
     public void deleteQueue(String queueName) {
         messageStore.deleteByQueuePath(queueName);
-        queueStore.delete(queueName);
+        queueMetadataStore.delete(queueName);
     }
 }

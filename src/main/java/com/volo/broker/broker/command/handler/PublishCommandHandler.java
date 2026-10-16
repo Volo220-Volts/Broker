@@ -5,7 +5,6 @@ import com.volo.broker.broker.command.model.PublishCommand;
 import com.volo.broker.broker.command.model.PublishResult;
 import com.volo.broker.broker.services.PublishService;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
 
@@ -25,7 +24,6 @@ public class PublishCommandHandler implements CommandHandler<PublishCommand, Pub
     }
 
     @Override
-    @Transactional
     public PublishResult handle(PublishCommand command) {
         return publishService.publish(command);
     }
