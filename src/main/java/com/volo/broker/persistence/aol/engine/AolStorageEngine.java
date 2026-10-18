@@ -31,12 +31,20 @@ public interface AolStorageEngine extends Closeable {
     /**
      * Configures the micro-batching parameters for data writes.
      */
-    void setBatchConfig(int maxBatchSize, long lingerMicros);
+    void setBatchConfig(BatchConfig batchConfig);
+
+    default void setBatchConfig(int maxBatchSize, long lingerMicros) {
+        setBatchConfig(new BatchConfig(maxBatchSize, lingerMicros));
+    }
 
     /**
      * Configures batching parameters for standalone ACK persistence.
      */
-    void setAckBatchConfig(int maxAckBatchSize, long ackLingerMicros);
+    void setAckBatchConfig(BatchConfig ackBatchConfig);
+
+    default void setAckBatchConfig(int maxAckBatchSize, long ackLingerMicros) {
+        setAckBatchConfig(new BatchConfig(maxAckBatchSize, ackLingerMicros));
+    }
 
     /**
      * Submits a message to be written and persisted. Returns a future completed once durable.

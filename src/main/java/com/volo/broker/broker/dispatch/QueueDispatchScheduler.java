@@ -5,7 +5,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.volo.broker.broker.queue.QueueManager;
@@ -19,12 +18,11 @@ public class QueueDispatchScheduler {
 
     public QueueDispatchScheduler(
             DispatchManager dispatchManager,
-            QueueManager queueManager,
-            @Value("${broker.dispatch.threads:2}") int threads
+            QueueManager queueManager
     ) {
         this.dispatchManager = dispatchManager;
         this.queueManager = queueManager;
-        this.executor = Executors.newFixedThreadPool(Math.max(1, threads));
+        this.executor = Executors.newVirtualThreadPerTaskExecutor();
     }
 
     public void signal(String queueName){
@@ -44,7 +42,9 @@ public class QueueDispatchScheduler {
     }
 
     private boolean hasWork(String queueName){
-        return queueManager.find(queueName).get().size() > 0;
+        return queueManager.find(queueName)
+            .map(q -> q.size() > 0)
+            .orElse(false);
     }
 
     public void shutdown() {

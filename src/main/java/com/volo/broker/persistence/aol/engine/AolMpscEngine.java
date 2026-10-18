@@ -30,10 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class AolMpscEngine implements AolStorageEngine {
 
-    public static final int DEFAULT_MAX_BATCH_SIZE = 256;
-    public static final long DEFAULT_LINGER_MICROS = 1500L;
-    public static final int DEFAULT_MAX_ACK_BATCH_SIZE = 256;
-    public static final long DEFAULT_ACK_LINGER_MICROS = 5_000L;
+   
 
     public static final class QueueState {
         private final AolFile dataFile;
@@ -65,25 +62,33 @@ public final class AolMpscEngine implements AolStorageEngine {
     private final DataRecordCodec codec;
     private final Thread writerThread;
 
+    private volatile BatchConfig batchConfig;
+    private volatile BatchConfig ackBatchConfig;
+
     private volatile FsyncStrategy fsyncStrategy;
     private volatile FsyncMode fsyncMode;
     private volatile Throwable failure = null;
     private volatile boolean running = true;
 
-    private volatile int maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
-    private volatile long lingerMicros = DEFAULT_LINGER_MICROS;
-    private volatile int maxAckBatchSize = DEFAULT_MAX_ACK_BATCH_SIZE;
-    private volatile long ackLingerMicros = DEFAULT_ACK_LINGER_MICROS;
-
     private final AtomicLong dataForceCount = new AtomicLong();
     private final AtomicLong ackForceCount = new AtomicLong();
 
     public AolMpscEngine(DataRecordCodec codec) {
-        this(codec, FsyncMode.PARALLEL);
+        this(codec, BatchConfig.DEFAULT_DATA, BatchConfig.DEFAULT_ACK, FsyncMode.PARALLEL);
     }
 
     public AolMpscEngine(DataRecordCodec codec, FsyncMode fsyncMode) {
+        this(codec, BatchConfig.DEFAULT_DATA, BatchConfig.DEFAULT_ACK, fsyncMode);
+    }
+
+    public AolMpscEngine(DataRecordCodec codec, BatchConfig batchConfig, BatchConfig ackBatchConfig) {
+        this(codec, batchConfig, ackBatchConfig, FsyncMode.PARALLEL);
+    }
+
+    public AolMpscEngine(DataRecordCodec codec, BatchConfig batchConfig, BatchConfig ackBatchConfig, FsyncMode fsyncMode) {
         this.codec = Objects.requireNonNull(codec, "codec");
+        this.batchConfig = Objects.requireNonNull(batchConfig, "batchConfig");
+        this.ackBatchConfig = Objects.requireNonNull(ackBatchConfig, "ackBatchConfig");
         this.fsyncMode = Objects.requireNonNull(fsyncMode, "fsyncMode");
         this.fsyncStrategy = createStrategy(fsyncMode);
         this.queue = new MpscQueue<>();
@@ -130,25 +135,25 @@ public final class AolMpscEngine implements AolStorageEngine {
     }
 
     @Override
-    public void setBatchConfig(int maxBatchSize, long lingerMicros) {
-        if (maxBatchSize <= 0) throw new IllegalArgumentException("maxBatchSize must be > 0");
-        if (lingerMicros < 0) throw new IllegalArgumentException("lingerMicros must be >= 0");
-        this.maxBatchSize = maxBatchSize;
-        this.lingerMicros = lingerMicros;
+    public void setBatchConfig(BatchConfig batchConfig) {
+        validateBatchConfig(batchConfig);
+        this.batchConfig = batchConfig;
     }
 
     @Override
-    public void setAckBatchConfig(int maxAckBatchSize, long ackLingerMicros) {
-        if (maxAckBatchSize <= 0) throw new IllegalArgumentException("maxAckBatchSize must be > 0");
-        if (ackLingerMicros < 0) throw new IllegalArgumentException("ackLingerMicros must be >= 0");
-        this.maxAckBatchSize = maxAckBatchSize;
-        this.ackLingerMicros = ackLingerMicros;
+    public void setAckBatchConfig(BatchConfig ackBatchConfig) {
+        validateBatchConfig(ackBatchConfig);
+        this.ackBatchConfig = ackBatchConfig;
     }
 
-    public int getMaxBatchSize() { return maxBatchSize; }
-    public long getLingerMicros() { return lingerMicros; }
-    public int getMaxAckBatchSize() { return maxAckBatchSize; }
-    public long getAckLingerMicros() { return ackLingerMicros; }
+    private void validateBatchConfig(BatchConfig config) {
+        Objects.requireNonNull(config, "config");
+    }
+
+
+
+    public BatchConfig getBatchConfig() {return  batchConfig;}
+    public BatchConfig getAckBatchConfig() {return  ackBatchConfig;}
 
     @Override
     public long getForceCount() {
@@ -219,7 +224,7 @@ public final class AolMpscEngine implements AolStorageEngine {
             try {
                 long waitNanos = prepareDrainWaitNanos(batch);
 
-                int drained = queue.drainBatch(task -> processTask(task, batch), maxBatchSize, waitNanos);
+                int drained = queue.drainBatch(task -> processTask(task, batch), batchConfig.maxBatchSize(), waitNanos);
 
                 long now = System.nanoTime();
                 batch.updateTimestamps(now);
@@ -245,9 +250,9 @@ public final class AolMpscEngine implements AolStorageEngine {
     private long prepareDrainWaitNanos(BatchState batch) {
         long now = System.nanoTime();
         if (!batch.pendingWrites.isEmpty()) {
-            long limit = TimeUnit.MICROSECONDS.toNanos(lingerMicros);
+            long limit = TimeUnit.MICROSECONDS.toNanos(batchConfig.lingerMicros());
             long elapsed = now - batch.firstPendingWriteNanos;
-            if (batch.pendingWrites.size() >= maxBatchSize || elapsed >= limit || lingerMicros <= 0) {
+            if (batch.pendingWrites.size() >= batchConfig.maxBatchSize() || elapsed >= limit || batchConfig.lingerMicros() <= 0) {
                 commitBatch(batch);
                 return 0L;
             }
@@ -255,9 +260,9 @@ public final class AolMpscEngine implements AolStorageEngine {
         }
 
         if (!batch.pendingAcks.isEmpty()) {
-            long limit = TimeUnit.MICROSECONDS.toNanos(ackLingerMicros);
+            long limit = TimeUnit.MICROSECONDS.toNanos(ackBatchConfig.lingerMicros());
             long elapsed = now - batch.firstPendingAckNanos;
-            if (batch.pendingAcks.size() >= maxAckBatchSize || elapsed >= limit) {
+            if (batch.pendingAcks.size() >= ackBatchConfig.maxBatchSize() || elapsed >= limit) {
                 commitBatch(batch);
                 return 0L;
             }
@@ -314,17 +319,17 @@ public final class AolMpscEngine implements AolStorageEngine {
 
         if (!batch.pendingWrites.isEmpty()) {
             long writeElapsed = now - batch.firstPendingWriteNanos;
-            long writeLimit = TimeUnit.MICROSECONDS.toNanos(lingerMicros);
-            return batch.pendingWrites.size() >= maxBatchSize
+            long writeLimit = TimeUnit.MICROSECONDS.toNanos(batchConfig.lingerMicros());
+            return batch.pendingWrites.size() >= batchConfig.maxBatchSize()
                     || writeElapsed >= writeLimit
-                    || lingerMicros <= 0
+                    || batchConfig.lingerMicros() <= 0
                     || drained == 0;
         }
 
         if (!batch.pendingAcks.isEmpty()) {
             long ackElapsed = now - batch.firstPendingAckNanos;
-            long ackLimit = TimeUnit.MICROSECONDS.toNanos(ackLingerMicros);
-            return batch.pendingAcks.size() >= maxAckBatchSize
+            long ackLimit = TimeUnit.MICROSECONDS.toNanos(ackBatchConfig.lingerMicros());
+            return batch.pendingAcks.size() >= ackBatchConfig.maxBatchSize()
                     || ackElapsed >= ackLimit
                     || drained == 0;
         }

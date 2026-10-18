@@ -1,10 +1,18 @@
 spring:
   application:
     name: broker
+  threads:
+    virtual:
+      enabled: true
 
 broker:
   aol:
     base-dir: data/aol
+    sync-ack: false
+    max-batch-size: 256
+    linger-micros: 1500
+    ack-batch-size: 512
+    ack-linger-micros: 4000
   publisher:
     keep-alive:
       timeout-ms: 30000
@@ -13,5 +21,3 @@ broker:
     keep-alive:
       timeout-ms: 30000
       check-period-ms: 5000
-  dispatch:
-    threads: 2

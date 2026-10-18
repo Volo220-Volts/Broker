@@ -58,7 +58,7 @@ class BrokerRecoveryIntegrationTest {
         );
 
         // 1. Initial run: declare queues, save messages, ack some messages
-        try (MessageLogStorage logStorage = new AolMessageLogStorage(tempDir)) {
+        try (MessageLogStorage logStorage = new AolMessageLogStorage(tempDir, false)) {
             QueueMetadataStore metadataStore = new FileQueueMetadataStore(tempDir);
             MessageStore messageStore = new AolMessageStore(logStorage, metadataStore);
 
@@ -80,7 +80,7 @@ class BrokerRecoveryIntegrationTest {
         }
 
         // 2. Simulated restart: completely new memory state, fresh QueueManager, fresh recovery service
-        try (MessageLogStorage logStorage = new AolMessageLogStorage(tempDir)) {
+        try (MessageLogStorage logStorage = new AolMessageLogStorage(tempDir, false)) {
             QueueMetadataStore metadataStore = new FileQueueMetadataStore(tempDir);
             MessageStore messageStore = new AolMessageStore(logStorage, metadataStore);
             QueueManager queueManager = new InMemoryQueueManager();

@@ -8,6 +8,7 @@ import com.volo.broker.persistence.aol.codec.DataRecordCodec;
 import com.volo.broker.persistence.aol.codec.DecodedRecord;
 import com.volo.broker.persistence.aol.engine.AolMpscEngine;
 import com.volo.broker.persistence.aol.engine.AolStorageEngine;
+import com.volo.broker.persistence.aol.engine.BatchConfig;
 import com.volo.broker.persistence.aol.engine.FsyncMode;
 import com.volo.broker.persistence.aol.io.AolFileChannel;
 import com.volo.broker.persistence.aol.io.SegmentTailValidator;
@@ -64,15 +65,14 @@ public final class AolMessageLogStorage implements MessageLogStorage {
         }
     }
 
-    private final Path                               baseDir;
-    private final DataRecordCodec                    codec;
-    private final SegmentTailValidator               tailValidator;
-    private final StorageEngineType                  engineType;
-    private final AolMpscEngine                      mpscEngine;
+    private final Path baseDir;
+    private final DataRecordCodec codec;
+    private final SegmentTailValidator tailValidator;
+    private final AolMpscEngine mpscEngine;
     private final ConcurrentHashMap<String, QueueFiles> openFiles = new ConcurrentHashMap<>();
-    private final AtomicBoolean                      closed = new AtomicBoolean(false);
-    private final Thread                             shutdownHook;
-    private volatile boolean                         syncAck = true;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
+    private final Thread shutdownHook;
+    private volatile boolean syncAck = true;
 
     // ------------------------------------------------------------------ construction
 
@@ -84,27 +84,30 @@ public final class AolMessageLogStorage implements MessageLogStorage {
      * @throws IOException if the root directory cannot be created
      */
     public AolMessageLogStorage(Path baseDir) throws IOException {
-        this(baseDir, StorageEngineType.MPSC, FsyncMode.PARALLEL);
+        this(baseDir, false, BatchConfig.DEFAULT_DATA, BatchConfig.DEFAULT_ACK, FsyncMode.PARALLEL);
     }
 
-    /**
-     * Creates a new {@code AolMessageLogStorage} rooted at {@code baseDir} using the lock-free MPSC engine
-     * with the specified {@link FsyncMode}.
-     */
+    public AolMessageLogStorage(Path baseDir, boolean syncAck) throws IOException {
+        this(baseDir, syncAck, BatchConfig.DEFAULT_DATA, BatchConfig.DEFAULT_ACK, FsyncMode.PARALLEL);
+    }
+
     public AolMessageLogStorage(Path baseDir, FsyncMode fsyncMode) throws IOException {
-        this(baseDir, StorageEngineType.MPSC, fsyncMode);
+        this(baseDir, false, BatchConfig.DEFAULT_DATA, BatchConfig.DEFAULT_ACK, fsyncMode);
     }
 
-    /**
-     * Creates a new {@code AolMessageLogStorage} rooted at {@code baseDir} with specified engine type and fsync mode.
-     */
-    public AolMessageLogStorage(Path baseDir, StorageEngineType engineType, FsyncMode fsyncMode) throws IOException {
-        this.baseDir       = Objects.requireNonNull(baseDir, "baseDir");
-        this.codec         = new DataRecordCodec();
+    public AolMessageLogStorage(Path baseDir, boolean syncAck, FsyncMode fsyncMode) throws IOException {
+        this(baseDir, syncAck, BatchConfig.DEFAULT_DATA, BatchConfig.DEFAULT_ACK, fsyncMode);
+    }
+
+    public AolMessageLogStorage(Path baseDir, boolean syncAck, BatchConfig batchConfig, BatchConfig ackBatchConfig, FsyncMode fsyncMode) throws IOException {
+        this.baseDir = Objects.requireNonNull(baseDir, "baseDir");
+        this.codec = new DataRecordCodec();
         this.tailValidator = new SegmentTailValidator(codec);
-        this.engineType    = engineType != null ? engineType : StorageEngineType.MPSC;
-        FsyncMode mode     = fsyncMode != null ? fsyncMode : FsyncMode.PARALLEL;
-        this.mpscEngine    = new AolMpscEngine(codec, mode);
+        FsyncMode mode = fsyncMode != null ? fsyncMode : FsyncMode.PARALLEL;
+        BatchConfig dataConfig = batchConfig != null ? batchConfig : BatchConfig.DEFAULT_DATA;
+        BatchConfig ackConfig = ackBatchConfig != null ? ackBatchConfig : BatchConfig.DEFAULT_ACK;
+        this.mpscEngine = new AolMpscEngine(codec, dataConfig, ackConfig, mode);
+        this.syncAck = syncAck;
         Files.createDirectories(baseDir);
 
         this.shutdownHook = new Thread(() -> {
@@ -132,10 +135,6 @@ public final class AolMessageLogStorage implements MessageLogStorage {
         return mpscEngine.getFsyncMode();
     }
 
-    public StorageEngineType getEngineType() {
-        return engineType;
-    }
-
     public AolStorageEngine getBatchEngine() {
         return mpscEngine;
     }
@@ -144,18 +143,20 @@ public final class AolMessageLogStorage implements MessageLogStorage {
         return mpscEngine;
     }
 
-    /**
-     * Configures the micro-batching parameters for data writes in the MPSC engine.
-     */
-    public void setBatchConfig(int maxBatchSize, long lingerMicros) {
-        mpscEngine.setBatchConfig(maxBatchSize, lingerMicros);
+    public void setBatchConfig(BatchConfig batchConfig) {
+        mpscEngine.setBatchConfig(batchConfig);
     }
 
-    /**
-     * Configures batching parameters for standalone ACK persistence in the MPSC engine.
-     */
+    public void setBatchConfig(int maxBatchSize, long lingerMicros) {
+        mpscEngine.setBatchConfig(new BatchConfig(maxBatchSize, lingerMicros));
+    }
+
+    public void setAckBatchConfig(BatchConfig ackBatchConfig) {
+        mpscEngine.setAckBatchConfig(ackBatchConfig);
+    }
+
     public void setAckBatchConfig(int maxAckBatchSize, long ackLingerMicros) {
-        mpscEngine.setAckBatchConfig(maxAckBatchSize, ackLingerMicros);
+        mpscEngine.setAckBatchConfig(new BatchConfig(maxAckBatchSize, ackLingerMicros));
     }
 
     /**

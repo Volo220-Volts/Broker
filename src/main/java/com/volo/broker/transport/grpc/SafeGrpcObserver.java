@@ -4,10 +4,11 @@ import io.grpc.stub.StreamObserver;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 public final class SafeGrpcObserver<T> {
     private final StreamObserver<T> delegate;
-    private final Object lock = new Object();
+    private final ReentrantLock lock = new ReentrantLock();
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
     public SafeGrpcObserver(StreamObserver<T> delegate) {
@@ -23,10 +24,13 @@ public final class SafeGrpcObserver<T> {
             return;
         }
 
-        synchronized (lock) {
+        lock.lock();
+        try {
             if (!closed.get()) {
                 delegate.onNext(value);
             }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -35,8 +39,11 @@ public final class SafeGrpcObserver<T> {
             return;
         }
 
-        synchronized (lock) {
+        lock.lock();
+        try {
             delegate.onCompleted();
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -45,8 +52,11 @@ public final class SafeGrpcObserver<T> {
             return;
         }
 
-        synchronized (lock) {
+        lock.lock();
+        try {
             delegate.onError(throwable);
+        } finally {
+            lock.unlock();
         }
     }
 }

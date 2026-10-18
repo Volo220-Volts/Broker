@@ -19,8 +19,7 @@ class QueueDispatchSchedulerTest {
 
             QueueDispatchScheduler scheduler = new QueueDispatchScheduler(
                     dispatchManager,
-                    queueManager,
-                    2
+                    queueManager
             );
 
         try {
@@ -44,8 +43,7 @@ class QueueDispatchSchedulerTest {
 
             QueueDispatchScheduler scheduler = new QueueDispatchScheduler(
                     dispatchManager,
-                    queueManager,
-                    2
+                    queueManager
             );
         try {
             scheduler.signal("orders.created");
