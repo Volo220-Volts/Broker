@@ -116,4 +116,18 @@ public final class TestQueueSettings {
             DispatchPolicy.defaults()
         );
     }
+
+    public static QueueSettings withFlowControl(FlowControlPolicy flowControlPolicy) {
+        return new QueueSettings(
+            PersistenceMode.PERSISTENT,
+            PublishAckMode.ENABLED,
+            ConsumerAckMode.ENABLED,
+            RedeliveryPolicy.defaults(),
+            MessageRetentionPolicy.disabled(),
+            QueueLifecyclePolicy.defaults(),
+            QueueCapacityPolicy.unlimited(),
+            DispatchPolicy.defaults(),
+            flowControlPolicy
+        );
+    }
 }

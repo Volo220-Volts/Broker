@@ -12,7 +12,9 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
+import com.volo.broker.broker.flow.FlowState;
+import com.volo.broker.broker.flow.FlowTransition;
+import com.volo.broker.broker.queue.settings.FlowControlPolicy;
 
 public final class BrokerQueue {
     private final QueuePath path;
@@ -20,6 +22,7 @@ public final class BrokerQueue {
     private final Deque<QueuedMessage> messages = new ArrayDeque<>();
     private final long createdAt;
 
+    private volatile FlowState flowState = FlowState.OPEN;
     private long lastActivityAt;
     private long totalBytes;
 
@@ -43,32 +46,51 @@ public final class BrokerQueue {
         totalBytes += message.sizeBytes();
         touch();
 
+        FlowTransition transition = evaluateTransition();
+
         return dropped.isEmpty()
-                ? EnqueueResult.ofAccepted()
-                : EnqueueResult.ofAcceptedWithDropped(dropped);
+                ? EnqueueResult.ofAccepted(transition)
+                : EnqueueResult.ofAcceptedWithDropped(dropped, transition);
     }
 
-    public synchronized Optional<QueuedMessage> poll() {
+    public synchronized PollResult poll() {
         QueuedMessage message = messages.pollFirst();
 
         if (message == null) {
-            return Optional.empty();
+            return PollResult.empty();
         }
 
         totalBytes -= message.sizeBytes();
         touch();
 
-        return Optional.of(message);
+        FlowTransition transition = evaluateTransition();
+
+        return PollResult.of(message, transition);
     }
 
-    public synchronized void requeue(QueuedMessage message) {
+    public synchronized boolean canAccept(QueuedMessage message) {
         Objects.requireNonNull(message, "message must not be null");
+        if (!settings.capacityPolicy().limited()) {
+            return true;
+        }
+        if (!capacityExceededAfterAdding(message)) {
+            return true;
+        }
+        QueueCapacityPolicy policy = settings.capacityPolicy();
+        if (policy.overflowPolicy() == OverflowPolicy.DROP_OLDEST) {
+            return policy.maxBytes() <= 0 || message.sizeBytes() <= policy.maxBytes();
+        }
+        return false;
+    }
 
-        ensureCapacityBeforeEnqueue(message);
+    public synchronized FlowTransition requeue(QueuedMessage message) {
+        Objects.requireNonNull(message, "message must not be null");
 
         messages.addFirst(message);
         totalBytes += message.sizeBytes();
         touch();
+
+        return evaluateTransition();
     }
 
     public synchronized int size() {
@@ -108,39 +130,11 @@ public final class BrokerQueue {
         return lastActivityAt;
     }
 
-    //#endregion
-
-    private void ensureCapacityBeforeEnqueue(QueuedMessage message) {
-        if (!settings.capacityPolicy().limited()) {
-            return;
-        }
-
-        boolean messageLimitExceeded = settings.capacityPolicy().maxMessages() > 0
-                && messages.size() >= settings.capacityPolicy().maxMessages();
-
-        boolean bytesLimitExceeded = settings.capacityPolicy().maxBytes() > 0
-                && totalBytes + message.sizeBytes() > settings.capacityPolicy().maxBytes();
-
-        if (!messageLimitExceeded && !bytesLimitExceeded) {
-            return;
-        }
-
-        OverflowPolicy overflowPolicy = settings.capacityPolicy().overflowPolicy();
-
-        if (overflowPolicy == OverflowPolicy.DROP_OLDEST) {
-            QueuedMessage dropped = messages.pollFirst();
-            if (dropped != null) {
-                totalBytes -= dropped.sizeBytes();
-            }
-            return;
-        }
-
-        if (overflowPolicy == OverflowPolicy.DROP_NEWEST) {
-            throw new QueueOverflowException("Incoming message was dropped because queue is full: " + queuePath());
-        }
-
-        throw new QueueOverflowException("Queue capacity exceeded: " + queuePath());
+    public FlowState flowState() {
+        return flowState;
     }
+
+    //#endregion
 
     private List<QueuedMessage> applyOverflowPolicy(QueuedMessage incomingMessage) {
         if (!settings.capacityPolicy().limited()) {
@@ -199,5 +193,37 @@ public final class BrokerQueue {
         }
 
         return droppedMessages;
+    }
+
+    private FlowTransition evaluateTransition() {
+        FlowControlPolicy policy = settings.flowControlPolicy();
+        if (policy == null || !policy.enabled()) {
+            return FlowTransition.NONE;
+        }
+
+        if (flowState == FlowState.OPEN) {
+            if (isHighWatermarkExceeded(policy)) {
+                this.flowState = FlowState.BLOCKED;
+                return FlowTransition.TO_BLOCKED;
+            }
+        } else if (flowState == FlowState.BLOCKED) {
+            if (isLowWatermarkCleared(policy)) {
+                this.flowState = FlowState.OPEN;
+                return FlowTransition.TO_OPEN;
+            }
+        }
+        return FlowTransition.NONE;
+    }
+
+    private boolean isHighWatermarkExceeded(FlowControlPolicy policy) {
+        boolean msgExceeded = policy.highWatermarkMessages() > 0 && messages.size() >= policy.highWatermarkMessages();
+        boolean bytesExceeded = policy.highWatermarkBytes() > 0 && totalBytes >= policy.highWatermarkBytes();
+        return msgExceeded || bytesExceeded;
+    }
+
+    private boolean isLowWatermarkCleared(FlowControlPolicy policy) {
+        boolean msgCleared = policy.highWatermarkMessages() <= 0 || messages.size() <= policy.lowWatermarkMessages();
+        boolean bytesCleared = policy.highWatermarkBytes() <= 0 || totalBytes <= policy.lowWatermarkBytes();
+        return msgCleared && bytesCleared;
     }
 }

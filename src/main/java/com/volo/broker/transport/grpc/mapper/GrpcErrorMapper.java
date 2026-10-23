@@ -47,6 +47,7 @@ public final class GrpcErrorMapper {
             case QUEUE_NOT_FOUND -> ErrorCode.QUEUE_NOT_FOUND;
             case QUEUE_ALREADY_EXISTS -> ErrorCode.QUEUE_ALREADY_EXISTS;
             case QUEUE_OVERFLOW -> ErrorCode.QUEUE_OVERFLOW;
+            case RESOURCE_EXHAUSTED -> ErrorCode.RESOURCE_EXHAUSTED;
             default -> throw new IllegalArgumentException("Unexpected value: " + code);
         };
     }

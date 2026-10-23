@@ -99,7 +99,7 @@ class NackRedeliveryPolicyTest {
         assertThat(queueManager.require("orders.created").size())
                 .isEqualTo(1);
 
-        QueuedMessage redelivered = queueManager.require("orders.created").poll().orElseThrow();
+        QueuedMessage redelivered = queueManager.require("orders.created").poll().message().orElseThrow();
 
         assertThat(redelivered.getMessageId()).isEqualTo(100);
         assertThat(redelivered.isRedelivered()).isTrue();

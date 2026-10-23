@@ -144,4 +144,55 @@ class FileQueueMetadataStoreTest {
         assertThatThrownBy(() -> store.delete("   "))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("legacy queue.json without flowControlPolicy loads with FlowControlPolicy.disabled()")
+    void load_legacyJsonWithoutFlowControlPolicy_defaultsToDisabled() throws IOException {
+        String legacyJson = """
+                {
+                  "queuePath" : "legacy.queue",
+                  "createdAt" : 1700000000000,
+                  "settings" : {
+                    "persistenceMode" : "PERSISTENT",
+                    "publishAckMode" : "ENABLED",
+                    "consumerAckMode" : "ENABLED",
+                    "redeliveryPolicy" : {
+                      "enabled" : true,
+                      "maxAttempts" : 3,
+                      "requeueOnDisconnect" : true,
+                      "requeueOnSendFailure" : false
+                    },
+                    "retentionPolicy" : {
+                      "ttlEnabled" : false,
+                      "ttlMs" : 0
+                    },
+                    "lifecyclePolicy" : {
+                      "autoDelete" : false,
+                      "deleteOnIdle" : false,
+                      "idleTimeoutMs" : 0,
+                      "deleteOnClose" : false
+                    },
+                    "capacityPolicy" : {
+                      "limited" : false,
+                      "maxMessages" : 0,
+                      "maxBytes" : 0,
+                      "overflowPolicy" : "REJECT_PUBLISH"
+                    },
+                    "dispatchPolicy" : {
+                      "prefetchCount" : 100,
+                      "consumerSelectionStrategy" : "ROUND_ROBIN"
+                    }
+                  }
+                }
+                """;
+
+        Path queueDir = tempDir.resolve("queues").resolve("legacy.queue");
+        Files.createDirectories(queueDir);
+        Files.writeString(queueDir.resolve("queue.json"), legacyJson);
+
+        Optional<QueueSettings> found = store.find("legacy.queue");
+        assertThat(found).isPresent();
+        assertThat(found.get().flowControlPolicy()).isNotNull();
+        assertThat(found.get().flowControlPolicy().enabled()).isFalse();
+    }
 }

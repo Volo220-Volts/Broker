@@ -13,6 +13,18 @@ broker:
     linger-micros: 1500
     ack-batch-size: 512
     ack-linger-micros: 4000
+  flow-control:
+    enabled: true
+    defaults:
+      high-watermark-messages: 10000
+      low-watermark-messages: 5000
+      high-watermark-bytes: 67108864
+      low-watermark-bytes: 33554432
+      max-block-ms: 0
+    global:
+      high-bytes: 1073741824
+      low-bytes: 805306368
+    resume-batch: 64
   publisher:
     keep-alive:
       timeout-ms: 30000

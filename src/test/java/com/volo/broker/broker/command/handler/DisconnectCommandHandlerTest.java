@@ -58,8 +58,8 @@ class DisconnectCommandHandlerTest {
         assertThat(queueManager.require("orders.created").size())
                 .isEqualTo(2);
 
-        QueuedMessage first = queueManager.require("orders.created").poll().orElseThrow();
-        QueuedMessage second = queueManager.require("orders.created").poll().orElseThrow();
+        QueuedMessage first = queueManager.require("orders.created").poll().message().orElseThrow();
+        QueuedMessage second = queueManager.require("orders.created").poll().message().orElseThrow();
 
         assertThat(first.getMessageId()).isEqualTo(100);
         assertThat(second.getMessageId()).isEqualTo(200);

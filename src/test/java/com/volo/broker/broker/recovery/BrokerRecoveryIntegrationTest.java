@@ -107,25 +107,25 @@ class BrokerRecoveryIntegrationTest {
 
             // Verify order messages (101 was acked, so only 102 and 103 should be recovered)
             BrokerQueue ordersQueue = recoveredOrders.get();
-            Optional<QueuedMessage> msg1 = ordersQueue.poll();
+            Optional<QueuedMessage> msg1 = ordersQueue.poll().message();
             assertThat(msg1).isPresent();
             assertThat(msg1.get().getMessageId()).isEqualTo(102L);
             assertThat(msg1.get().isRedelivered()).isTrue();
 
-            Optional<QueuedMessage> msg2 = ordersQueue.poll();
+            Optional<QueuedMessage> msg2 = ordersQueue.poll().message();
             assertThat(msg2).isPresent();
             assertThat(msg2.get().getMessageId()).isEqualTo(103L);
             assertThat(msg2.get().isRedelivered()).isTrue();
 
-            assertThat(ordersQueue.poll()).isEmpty();
+            assertThat(ordersQueue.poll().message()).isEmpty();
 
             // Verify payment messages
             BrokerQueue paymentsQueue = recoveredPayments.get();
-            Optional<QueuedMessage> payMsg = paymentsQueue.poll();
+            Optional<QueuedMessage> payMsg = paymentsQueue.poll().message();
             assertThat(payMsg).isPresent();
             assertThat(payMsg.get().getMessageId()).isEqualTo(201L);
             assertThat(payMsg.get().isRedelivered()).isTrue();
-            assertThat(paymentsQueue.poll()).isEmpty();
+            assertThat(paymentsQueue.poll().message()).isEmpty();
 
             // Verify message ID generator continues after max ID
             assertThat(idGenerator.nextId()).isEqualTo(202L);

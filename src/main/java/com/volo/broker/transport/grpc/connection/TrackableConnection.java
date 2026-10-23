@@ -6,4 +6,7 @@ public interface TrackableConnection {
     boolean isClosed();
     void close();
     void markSeen();
+    default boolean isPaused() {
+        return false;
+    }
 }

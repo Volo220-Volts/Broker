@@ -92,5 +92,31 @@ class GrpcQueueSettingsConverterTest {
 
         assertThat(result.consumerAckMode())
                 .isEqualTo(com.volo.broker.broker.queue.settings.ConsumerAckMode.ENABLED);
+
+        assertThat(result.flowControlPolicy().enabled()).isFalse();
+    }
+
+    @Test
+    void toDomain_shouldConvertFlowControlPolicyWhenEnabled() {
+        QueueSettings proto = QueueSettings.newBuilder()
+                .setFlowControlPolicy(com.custombroker.grpc.FlowControlPolicy.newBuilder()
+                        .setEnabled(true)
+                        .setHighWatermarkMessages(500)
+                        .setLowWatermarkMessages(250)
+                        .setHighWatermarkBytes(1024 * 1024)
+                        .setLowWatermarkBytes(512 * 1024)
+                        .setMaxBlockMs(5000)
+                        .build())
+                .build();
+
+        com.volo.broker.broker.queue.settings.QueueSettings result =
+                GrpcQueueSettingsConverter.toDomain(proto);
+
+        assertThat(result.flowControlPolicy().enabled()).isTrue();
+        assertThat(result.flowControlPolicy().highWatermarkMessages()).isEqualTo(500);
+        assertThat(result.flowControlPolicy().lowWatermarkMessages()).isEqualTo(250);
+        assertThat(result.flowControlPolicy().highWatermarkBytes()).isEqualTo(1024 * 1024);
+        assertThat(result.flowControlPolicy().lowWatermarkBytes()).isEqualTo(512 * 1024);
+        assertThat(result.flowControlPolicy().maxBlockMs()).isEqualTo(5000);
     }
 }

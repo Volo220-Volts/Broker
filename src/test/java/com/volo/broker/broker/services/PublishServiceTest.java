@@ -26,12 +26,14 @@ class PublishServiceTest {
     private final MessageStore messageStore = mock(MessageStore.class);
     private final QueueDispatchScheduler dispatchScheduler = mock(QueueDispatchScheduler.class);
     private final MessageIdGenerator messageIdGenerator = new TestMessageIdGenerator();
+    private final MessageLifecycleService lifecycleService = mock(MessageLifecycleService.class);
 
     private final PublishService publishService = new PublishService(
             queueManager,
             messageStore,
             dispatchScheduler,
-            messageIdGenerator
+            messageIdGenerator,
+            lifecycleService
     );
 
     @Test
@@ -109,6 +111,59 @@ class PublishServiceTest {
 
         assertThat(result.accepted()).isTrue();
         // assertThat(result.responseRequired()).isFalse();
+    }
+
+    @Test
+    void publish_whenCapacityExceeded_shouldNotSaveToMessageStore() {
+        var settings = new QueueSettings(
+                com.volo.broker.broker.queue.settings.PersistenceMode.PERSISTENT,
+                com.volo.broker.broker.queue.settings.PublishAckMode.ENABLED,
+                com.volo.broker.broker.queue.settings.ConsumerAckMode.ENABLED,
+                TestQueueSettings.reliable().redeliveryPolicy(),
+                TestQueueSettings.reliable().retentionPolicy(),
+                TestQueueSettings.reliable().lifecyclePolicy(),
+                new com.volo.broker.broker.queue.settings.QueueCapacityPolicy(
+                        true, 1, 0, com.volo.broker.broker.queue.settings.OverflowPolicy.REJECT_PUBLISH),
+                TestQueueSettings.reliable().dispatchPolicy()
+        );
+
+        queueManager.declare(QueuePath.of("orders.limited"), settings);
+
+        // First message fills capacity
+        var res1 = publishService.publish(command("orders.limited"));
+        assertThat(res1.accepted()).isTrue();
+        verify(messageStore, times(1)).save(eq("orders.limited"), any());
+
+        // Second message exceeds capacity
+        var res2 = publishService.publish(command("orders.limited"));
+        assertThat(res2.accepted()).isFalse();
+        assertThat(res2.errorCode()).isEqualTo(BrokerErrorCode.QUEUE_OVERFLOW);
+
+        // Verify save was NOT called a second time
+        verify(messageStore, times(1)).save(eq("orders.limited"), any());
+    }
+
+    @Test
+    void publish_whenDropOldest_shouldCompleteDroppedMessages() {
+        var settings = new QueueSettings(
+                com.volo.broker.broker.queue.settings.PersistenceMode.PERSISTENT,
+                com.volo.broker.broker.queue.settings.PublishAckMode.ENABLED,
+                com.volo.broker.broker.queue.settings.ConsumerAckMode.ENABLED,
+                TestQueueSettings.reliable().redeliveryPolicy(),
+                TestQueueSettings.reliable().retentionPolicy(),
+                TestQueueSettings.reliable().lifecyclePolicy(),
+                new com.volo.broker.broker.queue.settings.QueueCapacityPolicy(
+                        true, 1, 0, com.volo.broker.broker.queue.settings.OverflowPolicy.DROP_OLDEST),
+                TestQueueSettings.reliable().dispatchPolicy()
+        );
+
+        queueManager.declare(QueuePath.of("orders.drop-oldest"), settings);
+
+        publishService.publish(command("orders.drop-oldest"));
+        verify(lifecycleService, never()).complete(any(), any());
+
+        publishService.publish(command("orders.drop-oldest"));
+        verify(lifecycleService, times(1)).complete(eq(queueManager.require("orders.drop-oldest")), any());
     }
 
     private PublishCommand command(String routingKey) {

@@ -21,11 +21,11 @@ class BrokerQueueTest {
         queue.enqueue(TestMessages.message(1));
         queue.enqueue(TestMessages.message(2));
 
-        assertThat(queue.poll()).hasValueSatisfying(message ->
+        assertThat(queue.poll().message()).hasValueSatisfying(message ->
                 assertThat(message.getMessageId()).isEqualTo(1)
         );
 
-        assertThat(queue.poll()).hasValueSatisfying(message ->
+        assertThat(queue.poll().message()).hasValueSatisfying(message ->
                 assertThat(message.getMessageId()).isEqualTo(2)
         );
     }
@@ -40,10 +40,10 @@ class BrokerQueueTest {
         queue.enqueue(TestMessages.message(1));
         queue.enqueue(TestMessages.message(2));
 
-        var first = queue.poll().orElseThrow();
+        var first = queue.poll().message().orElseThrow();
         queue.requeue(first.asRedelivered());
 
-        assertThat(queue.poll()).hasValueSatisfying(message -> {
+        assertThat(queue.poll().message()).hasValueSatisfying(message -> {
             assertThat(message.getMessageId()).isEqualTo(1);
             assertThat(message.isRedelivered()).isTrue();
         });
@@ -78,7 +78,7 @@ class BrokerQueueTest {
                 .extracting("messageId")
                 .containsExactly(1L);
 
-        assertThat(queue.poll()).hasValueSatisfying(message ->
+        assertThat(queue.poll().message()).hasValueSatisfying(message ->
                 assertThat(message.getMessageId()).isEqualTo(2)
         );
     }
@@ -95,8 +95,35 @@ class BrokerQueueTest {
         assertThatThrownBy(() -> queue.enqueue(TestMessages.message(2)))
                 .isInstanceOf(QueueOverflowException.class);
 
-        assertThat(queue.poll()).hasValueSatisfying(message ->
+        assertThat(queue.poll().message()).hasValueSatisfying(message ->
                 assertThat(message.getMessageId()).isEqualTo(1)
         );
+    }
+
+    @Test
+    void canAccept_shouldReturnTrueWhenCapacityAvailableAndFalseWhenFull() {
+        BrokerQueue queue = BrokerQueue.create(
+                QueuePath.of("orders.limited"),
+                TestQueueSettings.withCapacity(1, OverflowPolicy.REJECT_PUBLISH)
+        );
+
+        assertThat(queue.canAccept(TestMessages.message(1))).isTrue();
+        queue.enqueue(TestMessages.message(1));
+        assertThat(queue.canAccept(TestMessages.message(2))).isFalse();
+    }
+
+    @Test
+    void requeue_shouldNotBeRejectedEvenWhenQueueIsFull() {
+        BrokerQueue queue = BrokerQueue.create(
+                QueuePath.of("orders.limited"),
+                TestQueueSettings.withCapacity(1, OverflowPolicy.REJECT_PUBLISH)
+        );
+
+        queue.enqueue(TestMessages.message(1));
+        // Even though capacity is 1 and queue has 1 message, requeue of a redelivery must succeed
+        assertThatNoException().isThrownBy(() ->
+                queue.requeue(TestMessages.message(99).asRedelivered())
+        );
+        assertThat(queue.size()).isEqualTo(2);
     }
 }

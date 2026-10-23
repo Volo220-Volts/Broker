@@ -63,6 +63,16 @@ public final class GrpcMessageConverters {
                 .build();
     }
 
+    public static PublisherResponse toFlowControlNoticeResponse(boolean blocked, String reason) {
+        return PublisherResponse.newBuilder()
+                .setFlow(com.custombroker.grpc.FlowControlNotice.newBuilder()
+                        .setBlocked(blocked)
+                        .setReason(reason == null ? "" : reason)
+                        .setTimestamp(System.currentTimeMillis())
+                        .build())
+                .build();
+    }
+
     public static Message toProtoMessage(QueuedMessage message) {
         Message.Builder builder = Message.newBuilder()
                 .setId(message.getMessageId())

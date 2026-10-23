@@ -61,6 +61,16 @@ enum ErrorCode {
   QUEUE_OVERFLOW = 6;
   UNSUPPORTED_DELIVERY_GUARANTEE = 7;
   INTERNAL_ERROR = 8;
+  RESOURCE_EXHAUSTED = 9;
+}
+
+message FlowControlPolicy {
+  bool enabled = 1;
+  int32 high_watermark_messages = 2;
+  int32 low_watermark_messages = 3;
+  int64 high_watermark_bytes = 4;
+  int64 low_watermark_bytes = 5;
+  int64 max_block_ms = 6;
 }
 
 message RedeliveryPolicy {
@@ -117,6 +127,13 @@ message QueueSettings {
   QueueLifecyclePolicy lifecycle_policy = 6;
   QueueCapacityPolicy capacity_policy = 7;
   DispatchPolicy dispatch_policy = 8;
+  FlowControlPolicy flow_control_policy = 9;
+}
+
+message FlowControlNotice {
+  bool blocked = 1;
+  string reason = 2;
+  int64 timestamp = 3;
 }
 
 message ErrorInfo {
@@ -138,6 +155,7 @@ message PublisherResponse {
     PublishAck ack = 1;
     PublishNack nack = 2;
     KeepAlive pong = 3;
+    FlowControlNotice flow = 4;
   }
 }
 

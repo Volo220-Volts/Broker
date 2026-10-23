@@ -6,6 +6,7 @@ import com.volo.broker.broker.queue.settings.MessageRetentionPolicy;
 import com.volo.broker.broker.queue.settings.QueueCapacityPolicy;
 import com.volo.broker.broker.queue.settings.QueueLifecyclePolicy;
 import com.volo.broker.broker.queue.settings.RedeliveryPolicy;
+import com.volo.broker.broker.queue.settings.FlowControlPolicy;
 import com.volo.broker.broker.queue.settings.PersistenceMode;
 import com.volo.broker.broker.queue.settings.PublishAckMode;
 import com.volo.broker.broker.queue.settings.ConsumerAckMode;
@@ -26,7 +27,8 @@ public final class GrpcQueueSettingsConverter {
                 toRetentionPolicy(proto.hasRetentionPolicy() ? proto.getRetentionPolicy() : null),
                 toLifecyclePolicy(proto.hasLifecyclePolicy() ? proto.getLifecyclePolicy() : null),
                 toCapacityPolicy(proto.hasCapacityPolicy() ? proto.getCapacityPolicy() : null),
-                toDispatchPolicy(proto.hasDispatchPolicy() ? proto.getDispatchPolicy() : null)
+                toDispatchPolicy(proto.hasDispatchPolicy() ? proto.getDispatchPolicy() : null),
+                toFlowControlPolicy(proto.hasFlowControlPolicy() ? proto.getFlowControlPolicy() : null)
         );
     }
 
@@ -90,5 +92,19 @@ public final class GrpcQueueSettingsConverter {
             case LEAST_INFLIGHT -> ConsumerSelectionStrategy.LEAST_INFLIGHT;
             case ROUND_ROBIN, CONSUMER_SELECTION_STRATEGY_UNSPECIFIED, UNRECOGNIZED -> ConsumerSelectionStrategy.ROUND_ROBIN;
         };
+    }
+
+    private static FlowControlPolicy toFlowControlPolicy(com.custombroker.grpc.FlowControlPolicy proto) {
+        if (proto == null || !proto.getEnabled()) {
+            return FlowControlPolicy.disabled();
+        }
+        return new FlowControlPolicy(
+                proto.getEnabled(),
+                proto.getHighWatermarkMessages(),
+                proto.getLowWatermarkMessages(),
+                proto.getHighWatermarkBytes(),
+                proto.getLowWatermarkBytes(),
+                proto.getMaxBlockMs()
+        );
     }
 }

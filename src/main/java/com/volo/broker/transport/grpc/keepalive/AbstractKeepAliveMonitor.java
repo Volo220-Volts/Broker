@@ -50,6 +50,10 @@ public abstract class AbstractKeepAliveMonitor<T extends TrackableConnection> im
                 continue;
             }
 
+            if (connection.isPaused()) {
+                continue;
+            }
+
             if (now - connection.lastSeenAt() > timeoutMillis) {
                 logger.debug("Closing stale connection: {}", connection.connectionId());
                 registry.unregister(connection.connectionId());
